@@ -1,0 +1,42 @@
+plant_name,UOM,Low_End_of_Range,High_End_of_Range
+Artichoke,F,4,5
+Arugula,I,8,10
+Asparagus,F,4,6
+"Beans, bush",I,24,30
+"Beans, lima (bush)",I,24,36
+"Beans, pole",F,8,12
+Beets,I,4,12
+Broccoli,I,18,24
+Brussel sprouts,I,24,36
+Cabbage,I,12,18
+Carrots,I,6,15
+Cauliflower,I,12,30
+Celery,I,18,24
+Chard,I,12,30
+Edamame,F,1,3
+Corn,F,4,8
+Cucumber,F,1,5
+Eggplant,F,1,3
+Endive,I,6,9
+Garlic,I,12,24
+Kale,I,12,24
+Kohlrabi,I,9,12
+Leeks,I,12,24
+Lettuce,I,6,12
+Okra,F,2,8
+Onions,I,8,24
+Parsnips,I,6,18
+Peas,F,2,6
+"Peppers, hot",I,12,48
+"Peppers, bell",I,24,36
+Potatoes,I,12,30
+Pumpkin,I,12,24
+Radishes,I,2,6
+Spinach,I,6,15
+Rutabaga,I,12,18
+"Squash, summer",I,12,24
+"Squash, winter",I,12,24
+Sweet potato,I,12,30
+Tomatoes,F,2,8
+Turnips,I,6,12
+Zucchini,F,2,3

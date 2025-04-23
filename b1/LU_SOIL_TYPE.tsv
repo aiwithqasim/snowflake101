@@ -1,0 +1,9 @@
+SOIL_TYPE_ID	SOIL_TYPE	SOIL_DESCRIPTION
+1 	Any	Any of the other types      .
+2 	Loam	Sticky and gritty. Combination of sand, silt, and clay.
+3	Clay	Easily rolls into a ball and becomes shiny but not gritty.
+4	Sand	Doesn’t roll into a ball well, and feels gritty.
+5	Silt	Feels slippery and silky                                   
+6	Loamy Sand	Easily rolls into a ball but it falls apart easily. 
+7	Clay Loam	Easily rolls into a ball, but feels rough.
+8	Sandy Clay	Easily rolls into a ball, shiny when rubbed, but still gritty.         

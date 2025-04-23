@@ -1,0 +1,43 @@
+Plant Name|Soil Needs
+Arugula|1
+Celery|1
+Pumpkin|1
+Beans, bush|3
+Beans, lima (bush)|3
+Beans, pole|3
+Cauliflower|3
+Chard|3
+Endive|4
+Corn|2
+Cucumber|2
+Tomatoes|2
+Zucchini|2
+Artichoke|2
+Brussel sprouts|2
+Cabbage|2
+Edamame|2
+Peas|2
+Peppers, bell|2
+Rutabaga|2
+Asparagus|4
+Beets|4
+Broccoli|4
+Carrots|4
+Eggplant|4
+Lettuce|4
+Peppers, hot|4
+Potatoes|4
+Spinach|4
+Spinach|4
+Squash, summer|4
+Squash, winter|4
+Sweet potato|4
+Turnips|4
+Kale|4
+Kohlrabi|4
+Leeks|4
+Garlic|5
+Onions|5
+Parsnips|5
+Radishes|5
+Okra|4
