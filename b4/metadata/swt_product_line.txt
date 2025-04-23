@@ -1,0 +1,3 @@
+SWT_PNK|1 Pink Headband|2 Pink Wristbands;SWT_YLW|1 Yellow Headband|2 Yellow Wristbands;
+SWT_LMG|1 Lime Green Headband|2 Lime Green Wristbands;SWT_ORG|1 Orange Headband|2 Orange Wristbands;SWT_RED|1 Red Headband|2 Red Wristbands;SWT_FGN|1 Forest Green Headband|2 Forest Green Wristbands;
+SWT_SFB|1 Snowflake Blue Headband|2 Snowflake Blue Wristbands;SWT_GRY|1 Charcoal Grey Headband|2 Charcoal Grey Wristbands;SWT_WHT| 1 White Headband|2 White Wristbands;SWT_BLK| 1 Black Headband|2 Black Wristbands;
