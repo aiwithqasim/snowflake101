@@ -1,0 +1,152 @@
+CurrencyID,Currency,Symbol,Digital code,Name
+1,AED,د.إ,784,UAE Dirham
+2,AFN,Af,971,Afghani
+3,ALL,L,8,Lek
+4,AMD,Դ,51,Armenian Dram
+5,AOA,Kz,973,Kwanza
+6,ARS,$,32,Argentine Peso
+7,AUD,$,36,Australian Dollar
+8,AWG,ƒ,533,Aruban Guilder/Florin
+9,AZN,ман,944,Azerbaijanian Manat
+10,BAM,КМ,977,Konvertibilna Marka
+11,BBD,$,52,Barbados Dollar
+12,BDT,৳,50,Taka
+13,BGN,лв,975,Bulgarian Lev
+14,BHD,ب.د,48,Bahraini Dinar
+15,BIF,₣,108,Burundi Franc
+16,BMD,$,60,Bermudian Dollar
+17,BND,$,96,Brunei Dollar
+18,BOB,Bs.,68,Boliviano
+19,BRL,R$,986,Brazilian Real
+20,BSD,$,44,Bahamian Dollar
+21,BTN,Nu.,64,Ngultrum
+22,BWP,P,72,Pula
+23,BYR,Br,974,Belarussian Ruble
+24,BZD,$,84,Belize Dollar
+25,CAD,$,124,Canadian Dollar
+26,CDF,₣,976,Congolese Franc
+27,CHF,₣,756,Swiss Franc
+28,CLP,$,152,Chilean Peso
+29,CNY,¥,156,Yuan
+30,COP,$,170,Colombian Peso
+31,CRC,₡,188,Costa Rican Colon
+32,CUP,$,192,Cuban Peso
+33,CVE,$,132,Cape Verde Escudo
+34,CZK,Kč,203,Czech Koruna
+35,DJF,₣,262,Djibouti Franc
+36,DKK,kr,208,Danish Krone
+37,DOP,$,214,Dominican Peso
+38,DZD,د.ج,12,Algerian Dinar
+39,EGP,£,818,Egyptian Pound
+40,ERN,Nfk,232,Nakfa
+41,ETB,??,230,Ethiopian Birr
+42,EUR,€,978,Euro
+43,FJD,$,242,Fiji Dollar
+44,FKP,£,238,Falkland Islands Pound
+45,GBP,£,826,Pound Sterling
+46,GEL,ლ,981,Lari
+47,GHS,₵,936,Cedi
+48,GIP,£,292,Gibraltar Pound
+49,GMD,D,270,Dalasi
+50,GNF,₣,324,Guinea Franc
+51,GTQ,Q,320,Quetzal
+52,GYD,$,328,Guyana Dollar
+53,HKD,$,344,Hong Kong Dollar
+54,HNL,L,340,Lempira
+55,HRK,Kn,191,Croatian Kuna
+56,HTG,G,332,Gourde
+57,HUF,Ft,348,Forint
+58,IDR,Rp,360,Rupiah
+59,ILS,₪,376,New Israeli Shekel
+60,INR,₹,356,Indian Rupee
+61,IQD,ع.د,368,Iraqi Dinar
+62,IRR,﷼,364,Iranian Rial
+63,ISK,Kr,352,Iceland Krona
+64,JMD,$,388,Jamaican Dollar
+65,JOD,د.ا,400,Jordanian Dinar
+66,JPY,¥,392,Yen
+67,KES,Sh,404,Kenyan Shilling
+68,KGS,??,417,Som
+69,KHR,៛,116,Riel
+70,KPW,₩,408,North Korean Won
+71,KRW,₩,410,South Korean Won
+72,KWD,د.ك,414,Kuwaiti Dinar
+73,KYD,$,136,Cayman Islands Dollar
+74,KZT,〒,398,Tenge
+75,LAK,₭,418,Kip
+76,LBP,ل.ل,422,Lebanese Pound
+77,LKR,Rs,144,Sri Lanka Rupee
+78,LRD,$,430,Liberian Dollar
+79,LSL,L,426,Loti
+80,LYD,ل.د,434,Libyan Dinar
+81,MAD,د.م.,504,Moroccan Dirham
+82,MDL,L,498,Moldavian Leu
+83,MGA,Ar,969,Malagasy Ariary
+84,MKD,ден,807,Denar
+85,MMK,K,104,Kyat
+86,MNT,₮,496,Tugrik
+87,MOP,P,446,Pataca
+88,MRO,UM,478,Ouguiya
+89,MUR,₨,480,Mauritius Rupee
+90,MVR,ރ.,462,Rufiyaa
+91,MWK,MK,454,Kwacha
+92,MXN,$,484,Mexican Peso
+93,MYR,RM,458,Malaysian Ringgit
+94,MZN,MTn,943,Metical
+95,NAD,$,516,Namibia Dollar
+96,NGN,₦,566,Naira
+97,NIO,C$,558,Cordoba Oro
+98,NOK,kr,578,Norwegian Krone
+99,NPR,₨,524,Nepalese Rupee
+100,NZD,$,554,New Zealand Dollar
+101,OMR,ر.ع.,512,Rial Omani
+102,PAB,B/.,590,Balboa
+103,PEN,S/.,604,Nuevo Sol
+104,PGK,K,598,Kina
+105,PHP,₱,608,Philippine Peso
+106,PKR,₨,586,Pakistan Rupee
+107,PLN,zł,985,PZloty
+108,PYG,₲,600,Guarani
+109,QAR,ر.ق,634,Qatari Rial
+110,RON,L,946,Leu
+111,RSD,din,941,Serbian Dinar
+112,RUB,р.,643,Russian Ruble
+113,RWF,₣,646,Rwanda Franc
+114,SAR,ر.س,682,Saudi Riyal
+115,SBD,$,90,Solomon Islands Dollar
+116,SCR,₨,690,Seychelles Rupee
+117,SDG,£,938,Sudanese Pound
+118,SEK,kr,752,Swedish Krona
+119,SGD,$,702,Singapore Dollar
+120,SHP,£,654,Saint Helena Pound
+121,SLL,Le,694,Leone
+122,SOS,Sh,706,Somali Shilling
+123,SRD,$,968,Suriname Dollar
+124,STD,Db,678,Dobra
+125,SYP,ل.س,760,Syrian Pound
+126,SZL,L,748,Lilangeni
+127,THB,฿,764,Baht
+128,TJS,ЅМ,972,Somoni
+129,TMT,m,934,Manat
+130,TND,د.ت,788,Tunisian Dinar
+131,TOP,T$,776,Pa’anga
+132,TRY,₤,949,Turkish Lira
+133,TTD,$,780,Trinidad and Tobago Dollar
+134,TWD,$,901,Taiwan Dollar
+135,TZS,Sh,834,Tanzanian Shilling
+136,UAH,₴,980,Hryvnia
+137,UGX,Sh,800,Uganda Shilling
+138,USD,$,840,US Dollar
+139,UYU,$,858,Peso Uruguayo
+140,UZS,so?m,860,Uzbekistan Sum
+141,VEF,Bs F,937,Bolivar Fuerte
+142,VND,₫,704,Dong
+143,VUV,Vt,548,Vatu
+144,WST,T,882,Tala
+145,XAF,₣,950,CFA Franc BCEAO
+146,XCD,$,951,East Caribbean Dollar
+147,XPF,₣,953,CFP Franc
+148,YER,﷼,886,Yemeni Rial
+149,ZAR,R,710,Rand
+150,ZMW,ZK,967,Zambian Kwacha
+151,ZWL,$,932,Zimbabwe Dollar
