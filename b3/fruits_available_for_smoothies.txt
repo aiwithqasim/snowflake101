@@ -1,0 +1,27 @@
+fruit_name%fruit_id
+———————%———————
+Apples%1
+Blueberries%2
+Cantaloupe%3
+Dragon Fruit%4
+Elderberries%5
+Figs%6
+Guava%7
+Honeydew%8
+Jackfruit%9
+Kiwi%10
+Lime%11
+Mango%12
+Nectarine%13
+Orange%14
+Papaya%15
+Quince%16
+Raspberries%17
+Strawberries%18
+Tangerine%19
+Ugli Fruit%20
+Vanilla Fruit%21
+Watermelon%22
+Ximenia%23
+Yerba Mate%24
+Ziziphus Jujube%25 
