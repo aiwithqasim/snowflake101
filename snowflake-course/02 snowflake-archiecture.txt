@@ -1,0 +1,119 @@
+// DATA WAREHOUSE ?
+--------------------------------
+
+-- Q: What is the puepose of Data Warehouse
+-- A: Consolidate and Intergrate different Data Sources and use them for Reporting and data analysis (Databse for OLAP)
+
+-- ETL - Extract , transform , Load
+-- Arc - Bronze --> Silver --> Gold
+
+// CLOUD COMPUTING
+------------------
+
+-- Q: Why Cloud Computing?
+-- A: describe with own wording 
+
+-- Infrastructure
+-- Security
+-- Electricity
+-- Software/hardware Upgrade 
+
+--> SUMMARIZING ABOVE: SOFTWARE AS A SERVICE
+--> responsible for Applciation Layer
+
+// Snowflake Edition
+--------------------
+-- Docs: https://docs.snowflake.com/en/user-guide/intro-editions
+
+-- Standard
+    -- Timetravel 1 day
+    -- Diaster recovery 7 Days
+    -- Network Policy / Secure Data Share / Federated Authentication (SSO)
+-- Enterprice ( eg: multi-cluster)
+    -- All standard features
+    -- Multi-Clusters
+    -- Time travel 90 Days
+    -- Materialized views
+    -- Search Optimization
+    -- Column Level Security
+-- Bussiness Critical (Sensitive Data/ Higher Protecttion)
+    -- All enterprise
+    -- Security Features ( customer Managed Encryption )
+    -- Support for Some data regulations (eg., PCI
+    -- Database failover/failback (disacter recovery)
+-- Private Edition (highest level of security)
+    -- Dedicated servers
+    -- Dedicated Metastores
+
+// PRICING
+----------
+-- docs:https://www.snowflake.com/en/pricing-options/
+
+-- decoupled compute and storage 
+-- pay what you need
+-- scalable and affordable clous prices
+-- pricing may vary region to region
+
+-- COMPUTE
+    -- Active warehouses + TIME + SIZE
+    -- Cloud Services
+    -- Serverless (snowpipe, Search optimization) --> Automatically resized
+    -- 2$, 3$, 4$, contact snowflake (AWS: USEST1(ohio))
+
+-- STORGAE
+    -- monthly fee 9 depends on cloud provide
+    -- eg: AWS US EST (ohio) 40$/TB
+    -- cost calculated after data copression (BLOBs)
+    -- on demand: at the end of the month
+    -- on capacity: before starting of the month
+
+-- NOTE: start with on demadn later swtich to on capacity
+
+-- DATA TRANSFER:
+    -- into snowflake is FREE
+    -- out to snowflake is paid
+    -- depend on cloud provider
+    -- TIP: same region /same cloud == no cost (AWS)
+
+// MONITOR USAGE
+-----------------
+
+-- Please a look at Admin >> cost Managment section
+
+// RESOURCE MONITOR
+-------------------
+
+-- is used to control and monitor usage of warehouse and account.
+-- available in all edition and account
+-- Credit QUOTA can be setup here.
+-- In Define Cycle (Monthly/Daily)  ==> Defualt:Monthly
+-- Monitoring can apply on WAREHOUSE/ACCOUNT level
+-- Can setup for Group of WAREHOUSES
+-- ACTION: Based on QUOTA we can define action
+    -- Suspend Imediately and Notify ==> 95%
+    -- Suspend and Notify ==> 85%
+    -- Notify ==> 75%
+
+-- NOTE: Create only by ACCOUNTADMIN but can be monitor and modify by others roles
+
+-- PITFALL: 
+-- Automatically track usgae of CLoud services
+-- Can be suspended if limit reaches
+-- CANNOT prevent cloud service usgae
+
+-- *** DEMO show the demo ***
+
+// ROLES IN SNOWFLAKE
+---------------------
+
+-- https://docs.snowflake.com/en/_images/system-role-hierarchy.png
+-- docs: https://docs.snowflake.com/en/user-guide/security-access-control-overview
+
+-- ORGADMIN
+-- 1. Create all ccount (eg: ACME, ADS)
+-- 2. View all Account (eg: cost consumption)
+-- 3. View Account usage ainformation
+
+
+
+

@@ -1,0 +1,166 @@
+// if you don't have SNOWFLAKE_SAMPLE_DATA
+
+-- create db from share
+CREATE DATABASE SNOWFLAKE_SAMPLE_DATA FROM SHARE SFC_SANMPLES.SAMPLE_DATA; 
+
+-- grnat priviliages to PUBLIC role
+GRANT IMPORT PRIVILEGES ON DATABASE SNOWFLAKE_SAMPLE_DATA TO ROLE PUBLIC;
+
+-- vlidating (hello world to snowlfkae)
+-- Database >> Schema >> ( TABLES / VIEWS / PROCEDURE)
+
+SELECT * FROM SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.CUSTOMER; -- qualified name + run button  + (CTRL+ENTER)
+SELECT * FROM SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.ORDERS; -- selecting running
+SELECT * FROM CUSTOMER; -- query with CONTEXT settings
+
+-- Side Menu
+
+// SNOWFLAKE ARCHITECTURE
+-- docs: https://docs.snowflake.com/en/user-guide/intro-key-concepts
+
+-- 1. CLOUD SERVICES
+    -- Brain of the system 
+    -- Managing Infrastructure, Access controls, Security, Optimizer, Metadata etc
+-- 2. QUERY PROCESSING
+    -- Muscle of the System ( not real warehouses )
+    -- Performs MMP (Massive Parallel Processing)
+-- 3. STORAGE LAYER
+    -- Data reside in cloud we'll select
+    -- Hybrid Columnar Storage
+    -- Saved in columns and so called compressed BLOBS
+    -- Analytics db ( blobs are optimized for it)
+
+
+// WAREHOUSES:
+-- docs: https://docs.snowflake.com/en/user-guide/warehouses-overview
+
+-- XS => 1 Server ==> 0.0003 credits
+-- S => 2 ==> 0.0003
+-- M => 4
+-- L => 8
+-- XL => 16
+-- 4XL => 128 ==> 0.0356
+
+-- NOTE: price will depend on warehosue size, cloud provided and region
+
+
+// MULTICLUSTERING
+-- docs: https://docs.snowflake.com/en/user-guide/warehouses-multicluster
+
+-- more compute than more servers can come if we have multiclustering feature enables with MIN and MAX clusters.
+
+
+-- role PUBLIC can't create roles ACCOUNTADMIN/SSYADMIN
+-- role SECURITYADMIN can only see the warehouses
+USE ROLE sysadmin;
+
+
+// CREATING WAREHOUSE
+----------------------
+
+-- UI >> admin >> warehouse >> create
+-- TYPE: Standard, Snowpark Optimized (ML worloads)
+-- docs: (PRICING)https://www.snowflake.com/en/pricing-options/
+-- cloud + region + Type (Editin: Enterprice) => 3$/credit
+CREATE OR REPLACE WAREHOUSE FIRST_WH_XS WITH
+WAREHOUSE_SIZE = XSMALL
+AUTO_RESUME = TRUE
+AUTO_SUSPEND = 300
+MIN_CLUSTER_COUNT = 1 -- multi-clustering
+MAX_CLUSTER_COUNT = 3
+SCALING_POLICY = 'ECONOMY'
+INITIALLY_SUSPENDED = TRUE
+COMMENT = 'Any Appropriate Comment';
+
+-- Scaling Policy:
+    -- 1. Standard - prevent / minimize queuing of workloads ( fast clsuter creation)
+    -- 2. Economy - conserve credists by running fully loaded clusters ( take bit of time for spining up)
+    
+-- NOTE: Don't Need Warehouse to execute a WH command b/c is done at the Cloud Service Layer 
+
+// Managing Warehouse
+---------------------
+
+ALTER WAREHOUSE FIRST_WH_XS RESUME;
+ALTER WAREHOUSE FIRST_WH_XS SUSPEND;
+ALTER WAREHOUSE FIRST_WH_XS SET WAREHOUSE_SIZE = SMALL; -- also without quote it will work
+ALTER WAREHOUSE FIRST_WH_XS SET WAREHOUSE_SIZE = 'XSMALL';
+ALTER WAREHOUSE FIRST_WH_XS SET AUTO_SUSPEND=60;
+
+DROP WAREHOUSE FIRST_WH_XS;
+-- UI >> admin >> warehouse >> drop / edit / resume / drop / transfer ownership
+
+// SCLAING POLICY
+-----------------
+
+-- Multi-clustering
+-- AUTO SCLAING: When to start Additional Clusters ?
+
+-- TWO TYPES of scaling policies at i:e., peak hours 
+    -- 1. Standard (defualt)
+        -- Prevent / minimize queuing of workloads
+        -- After 2-3 Consective runs it reduce automatically
+        -- Focus on PERFORMANCE
+    -- 2. Economy 
+        -- Conserve credists by running fully loaded clusters ( Enough load to keep the cluster busy for 6 minutes )
+        -- 5-6 consective runs
+        -- Focus on PIRICING/CREDITS
+
+// EXPLORING TABLES and DATABASES
+----------------------------------
+
+-- Side menur Databases / Worksheets and Database Section (role is important)
+
+-- Database Section >> +databases
+-- Database section >> Database >> +schema
+-- Database section >> Database >> Schema >> +tables(standard)
+
+CREATE TABLE FIRST_TABLE (
+    FIRST_COLUMN INT,
+    SECOND_COLUMN TEXT
+    -- , <col2_name> <col2_type>
+    -- supported types: https://docs.snowflake.com/en/sql-reference/intro-summary-data-types
+    )
+    COMMENT = 'This  is our first table';
+
+SELECT * FROM FIRST_DB.FIRST_SCHEMA.FIRST_TABLE; -- CTRL+ENTER
+
+-- Altering db
+ALTER DATABASE FIRST_DB RENAME TO "OUR_FIRST_DB";
+USE DATABASE OUR_FIRST_DB;
+CREATE SCHEMA OUR_FIRST_DB.PUBLIC;
+
+-- Creating the table / Meta data
+CREATE TABLE "OUR_FIRST_DB"."PUBLIC"."LOAN_PAYMENT" (
+  "Loan_ID" STRING,
+  "loan_status" STRING,
+  "Principal" STRING,
+  "terms" STRING,
+  "effective_date" STRING,
+  "due_date" STRING,
+  "paid_off_time" STRING,
+  "past_due_days" STRING,
+  "age" STRING,
+  "education" STRING,
+  "Gender" STRING);
+  
+
+SELECT * FROM OUR_FIRST_DB.PUBLIC.LOAN_PAYMENT;
+
+// LOADING DATA into SNOWFLAKE
+-------------------------------
+
+COPY INTO OUR_FIRST_DB.PUBLIC.LOAN_PAYMENT
+FROM s3://bucketsnowflakes3/Loan_payments_data.csv
+FILE_FORMAT = (
+    TYPE = 'CSV',
+    FIELD_DELIMITER = ',',
+    SKIP_HEADER = 1
+);
+
+
+SELECT * FROM OUR_FIRST_DB.PUBLIC.LOAN_PAYMENT;
+
+--=================================================================================================
+
+

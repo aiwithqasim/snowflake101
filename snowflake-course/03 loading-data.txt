@@ -1,0 +1,280 @@
+// Loading Methods
+-------------------
+
+-- 1. Bluk Loading
+        -- all data in once from STAGE
+        -- larger in volume
+        -- use warehosues (NOT serverless features)
+-- 2. Continuous Loading
+        -- automatically laod the data once available on STAGE
+        -- smaller in volume as compared with bulk laoding
+        -- snowpipe ( serverless geature)
+
+// UNDERSTANDING STAGES
+------------------------
+
+-- Not stagging area but loadation to store data (eg: S3)
+-- Types of satges are., Internal and External Storage
+-- External Stage: 
+    -- cloud provider (eg., AWS, GCP, Azure),
+    -- object create in Schema 
+    -- eg., CREATE STAGE (URL, access setting)
+    -- NOTE: Costs may apply for Data transfer for different region and cloud provider
+
+-- Internal Stage:
+    -- local storage maintianed by snowflake
+
+
+// CRAETING STAGES
+------------------
+
+-- created db and schema
+CREATE OR REPLACE DATABASE MANAGE_DB;
+CREATE OR REPLACE SCHEMA MANAGE_DB.EXTERNAL_STAGES;
+
+-- creating stage with credentials
+CREATE OR REPLACE STAGE MANAGE_DB.EXTERNAL_STAGES.AWS_STAGE
+URL = 's3://bucketsnowflakes3'
+CREDENTIALS = (
+    AWS_KEY_ID= 'DUMMY_AWS_KEY_ID',
+    AWS_SECRET_KEY= 'DUMMY_AWS_SECRET_KEY'
+);
+
+-- describing stage
+DESC STAGE MANAGE_DB.EXTERNAL_STAGES.AWS_STAGE;
+
+-- altering creds
+ALTER STAGE MANAGE_DB.EXTERNAL_STAGES.AWS_STAGE
+SET CREDENTIALS = (
+    AWS_KEY_ID= 'DUMMY_AWS_KEY_ID_ALTER_VERSION',
+    AWS_SECRET_KEY= 'DUMMY_AWS_SECRET_KEY_ALTER_VERSION'
+);
+
+-- Since "bucketsnowflakes3" is a public bucket we don't need creds
+CREATE OR REPLACE STAGE MANAGE_DB.EXTERNAL_STAGES.AWS_STAGE
+URL = 's3://bucketsnowflakes3';
+
+-- listing stage
+LIST @AWS_STAGE;
+
+-- s3://bucketsnowflakes3/Loan_payments_data.csv
+-- s3://bucketsnowflakes3/OrderDetails.csv
+-- s3://bucketsnowflakes3/sampledata.csv
+
+-- valdiating file
+SELECT $1, $2, $3, $4, $5, $6, $7
+FROM @AWS_STAGE/OrderDetails.csv limit 5;
+
+-- creating table to get data into the table
+CREATE OR REPLACE TABLE OUR_FIRST_DB.PUBLIC.ORDERS(
+    ORDER_ID VARCHAR(30),
+    AMOUNT INT,
+    PROFIT INT,
+    QUANTITY INT,
+    CATEGORY VARCHAR(30),
+    SUB_CATEGORY VARCHAR(30)
+);
+
+-- validating
+SELECT * FROM OUR_FIRST_DB.PUBLIC.ORDERS;
+
+-- copying data into orders
+COPY INTO OUR_FIRST_DB.PUBLIC.ORDERS
+FROM @MANAGE_DB.EXTERNAL_STAGES.AWS_STAGE
+FILES = ('OrderDetails.csv')
+-- PATTERN= '.*Order.*' -- use FILES or  PATTERN
+-- PURGE=TRUE -- purge file from location
+-- FORCE= TRUE
+FILE_FORMAT = (
+    TYPE= 'CSV'
+    FIELD_DELIMITER= ','
+    SKIP_HEADER= 1
+); -- with or without ',' will work;
+
+TRUNCATE TABLE OUR_FIRST_DB.PUBLIC.ORDERS;
+
+// Transforming while copying - EXAMPLE 01 (Selective Columns)
+
+CREATE OR REPLACE TABLE OUR_FIRST_DB.PUBLIC.ORDERS_EX1(
+    ORDER_ID VARCHAR(30),
+    AMOUNT INT
+);
+
+-- tranforming before copying
+COPY INTO OUR_FIRST_DB.PUBLIC.ORDERS_EX1
+FROM (
+    select s.$1, s.$2
+    from @MANAGE_DB.EXTERNAL_STAGES.AWS_STAGE s
+)
+FILES = ('OrderDetails.csv')
+FILE_FORMAT = (
+    TYPE=CSV
+    FIELD_DELIMITER=','
+    SKIP_HEADER=1
+);
+
+-- validating
+SELECT * FROM OUR_FIRST_DB.PUBLIC.ORDERS_EX1;
+
+
+// Transforming while copying - EXAMPLE 01 (Using Functions i:e,, CASE, CAST, SUBSTRING)
+-- docs: https://docs.snowflake.com/en/user-guide/data-load-transform
+
+CREATE OR REPLACE TABLE OUR_FIRST_DB.PUBLIC.ORDERS_EX2 (
+    ORDER_ID VARCHAR(30),
+    AMOUNT INT,
+    PROFIT INT,
+    PROFITABLE_FLAG VARCHAR(30),
+    CATEGORY_SUBSTRING VARCHAR(5)
+);
+
+COPY INTO OUR_FIRST_DB.PUBLIC.ORDERS_EX2
+FROM (
+    select 
+        s.$1,
+        s.$2,
+        s.$3, 
+        CASE WHEN CAST(s.$3 as INT) < 0 THEN 'Not Profitable' ELSE 'Profitable' END,
+        SUBSTRING(s.$5,1,5)
+    from @MANAGE_DB.EXTERNAL_STAGES.AWS_STAGE s )
+FILES = ('OrderDetails.csv')
+FILE_FORMAT = (
+    TYPE=CSV
+    FIELD_DELIMITER=','
+    SKIP_HEADER=1
+);
+
+SELECT * FROM OUR_FIRST_DB.PUBLIC.ORDERS_EX2;
+
+
+// Advance tranformign techbiques
+
+CREATE OR REPLACE TABLE OUR_FIRST_DB.PUBLIC.ORDERS_EX2 (
+    DUMMY_ID INT AUTOINCREMENT start 1 increment 1, -- dummy id
+    ORDER_ID VARCHAR(30),
+    AMOUNT INT,
+    PROFIT INT,
+    PROFITABLE_FLAG VARCHAR(30),
+    CATEGORY_SUBSTRING VARCHAR(5)
+);
+
+COPY INTO OUR_FIRST_DB.PUBLIC.ORDERS_EX2 (ORDER_ID, AMOUNT) -- table have 4 columns but we loaded only two columns
+FROM (
+    select 
+        s.$1,
+        s.$2,
+    from @MANAGE_DB.EXTERNAL_STAGES.AWS_STAGE s )
+FILES = ('OrderDetails.csv')
+FILE_FORMAT = (
+    TYPE=CSV
+    FIELD_DELIMITER=','
+    SKIP_HEADER=1
+);
+
+SELECT * FROM OUR_FIRST_DB.PUBLIC.ORDERS_EX2;
+
+// COPY COMMAND ON_ERROR
+-- docs: https://docs.snowflake.com/en/sql-reference/sql/copy-into-table
+-- ON_ERROR = { CONTINUE | SKIP_FILE | SKIP_FILE_<num> | 'SKIP_FILE_<num>%' | ABORT_STATEMENT }
+
+-- create stage with havign error files
+CREATE OR REPLACE STAGE MANAGE_DB.EXTERNAL_STAGES.AWS_STAGE_ERROR_EX
+URL = 's3://bucketsnowflakes4';
+
+-- checking stage
+LIST @MANAGE_DB.EXTERNAL_STAGES.AWS_STAGE_ERROR_EX; 
+
+-- s3://bucketsnowflakes4/OrderDetails_error.csv (profile column have error in 2 recrds)
+-- s3://bucketsnowflakes4/OrderDetails_error2.csv (No errors)
+
+ CREATE OR REPLACE TABLE OUR_FIRST_DB.PUBLIC.ORDERS_ERROR_EX (
+    ORDER_ID VARCHAR(30),
+    AMOUNT INT,
+    PROFIT INT,
+    QUANTITY INT,
+    CATEGORY VARCHAR(30),
+    SUBCATEGORY VARCHAR(30)
+);
+
+-- Copying files from error stage
+COPY INTO OUR_FIRST_DB.PUBLIC.ORDERS_ERROR_EX
+FROM @MANAGE_DB.EXTERNAL_STAGES.AWS_STAGE_ERROR_EX
+FILES = ('OrderDetails_error.csv', 'OrderDetails_error2.csv')
+ON_ERROR = 'SKIP_FILE_3'
+FILE_FORMAT = (
+    TYPE=CSV
+    FIELD_DELIMITER=','
+    SKIP_HEADER=1
+);
+
+SELECT * FROM OUR_FIRST_DB.PUBLIC.ORDERS_ERROR_EX;
+
+
+// FILE FORMATS (In all above COPY command we're using FILE_FORMAT (TYPE, FIELD_DELIMITER, SKIP_HEADER etc..) as part of copy command)
+
+-- creating file format schema
+CREATE OR REPLACE SCHEMA MANAGE_DB.FILE_FORMATS;
+
+
+-- METHOD 1: Default FF but Altering later as per requirements
+
+-- creating file format like stage
+CREATE OR REPLACE FILE FORMAT MANAGE_DB.FILE_FORMATS.MY_FILE_FORMAT; -- will be created with all defualt values
+
+-- describing
+DESC FILE FORMAT MANAGE_DB.FILE_FORMATS.MY_FILE_FORMAT;
+
+-- COpying with file format
+COPY INTO OUR_FIRST_DB.PUBLIC.ORDERS_ERROR_EX
+FROM @MANAGE_DB.EXTERNAL_STAGES.AWS_STAGE_ERROR_EX
+FILES = ('OrderDetails_error.csv', 'OrderDetails_error2.csv')
+-- ON_ERROR = 'SKIP_FILE_3'
+FILE_FORMAT = ( FORMAT_NAME = MANAGE_DB.FILE_FORMATS.MY_FILE_FORMAT); -- becuase we don;t ahve SKIP_HEADER=1 in FF
+
+-- ALtering FF
+ALTER FILE FORMAT MANAGE_DB.FILE_FORMATS.MY_FILE_FORMAT
+SET SKIP_HEADER=1;
+
+-- Lets try copyign now
+COPY INTO OUR_FIRST_DB.PUBLIC.ORDERS_ERROR_EX
+FROM @MANAGE_DB.EXTERNAL_STAGES.AWS_STAGE_ERROR_EX
+FILES = ('OrderDetails_error.csv', 'OrderDetails_error2.csv')
+ON_ERROR = 'SKIP_FILE_2'
+FILE_FORMAT = ( FORMAT_NAME = MANAGE_DB.FILE_FORMATS.MY_FILE_FORMAT);
+
+
+-- MTEHOD 2: Crerting  FF as per our requiremnt while creation
+
+CREATE OR REPLACE FILE FORMAT MANAGE_DB.FILE_FORMATS.MY_FILE_FORMAT
+    TYPE= JSON, -- adding our requirement here
+    TIME_FORMAT=AUTO;
+
+-- ERROR will raise becuase FF is in JSON and file laoding is in CSV
+COPY INTO OUR_FIRST_DB.PUBLIC.ORDERS_ERROR_EX
+FROM @MANAGE_DB.EXTERNAL_STAGES.AWS_STAGE_ERROR_EX
+FILES = ('OrderDetails_error.csv')
+ON_ERROR = 'SKIP_FILE_3'
+FILE_FORMAT = ( FORMAT_NAME = MANAGE_DB.FILE_FORMATS.MY_FILE_FORMAT);
+
+--  Trying ALTERing FF
+ALTER FILE FORMAT MANAGE_DB.FILE_FORMATS.MY_FILE_FORMAT
+SET TYPE= CSV; -- FROM JSOn TO CSV we can't change so re-cretae the FF agin
+
+-- Recreate file format (default = CSV) 
+CREATE OR REPLACE file format MANAGE_DB.file_formats.my_file_format; -- remember SKIP_HEADER is 0
+
+-- truncate to make sure table is empty
+TRUNCATE TABLE OUR_FIRST_DB.PUBLIC.ORDERS_ERROR_EX;
+
+-- copying with some extra agrs in FILE_FORMAT
+COPY INTO OUR_FIRST_DB.PUBLIC.ORDERS_ERROR_EX
+FROM @MANAGE_DB.EXTERNAL_STAGES.AWS_STAGE_ERROR_EX
+FILES = ('OrderDetails_error.csv')
+ON_ERROR = 'SKIP_FILE_3'
+FILE_FORMAT = (
+    FORMAT_NAME = MANAGE_DB.FILE_FORMATS.MY_FILE_FORMAT
+    SKIP_HEADER = 1
+);
+
+
+DESC STAGE MANAGE_DB.EXTERNAL_STAGES.AWS_STAGE_ERROR_EX;

@@ -1,0 +1,148 @@
+select current_account();
+
+-- Create a Smoothies Database
+create database SMOOTHIES;
+
+--  Create a FRUIT_OPTIONS Table
+create or replace table FRUIT_OPTIONS (
+    FRUIT_ID  INTEGER,
+    FRUIT_NAME  VARCHAR(25)
+);
+
+--  A FILE FORMAT to Load the Fruit File
+create file format smoothies.public.two_headerrow_pct_delim
+   type = CSV,
+   skip_header = 2,   
+   field_delimiter = '%',
+   trim_space = TRUE
+;
+
+-- created satge and added fruits_available_for_smoothies.txt
+-- Query the Not-Yet-Loaded Data Using the File Format
+
+select $1, $2
+from @my_uploaded_files/fruits_available_for_smoothies.txt
+(file_format => smoothies.public.two_headerrow_pct_delim);
+
+-- Check to See if the File WOULD load.
+copy into smoothies.public.fruit_options
+from @my_uploaded_files
+files = ('fruits_available_for_smoothies.txt')
+file_format = (format_name= smoothies.public.two_headerrow_pct_delim)
+on_error = abort_statement
+validation_mode = return_errors
+purge = true;
+
+-- FIXING
+copy into smoothies.public.fruit_options
+from (select $2 as FRUIT_ID, $1 as FRUIT_NAME
+from @my_uploaded_files/fruits_available_for_smoothies.txt)
+file_format = (format_name= smoothies.public.two_headerrow_pct_delim)
+on_error = abort_statement
+purge = true; -- delete file after copying
+
+-- ORDERS
+create or replace table ORDERS(
+    ingredients VARCHAR(200)
+);
+
+-- validating f-sting creating in app
+insert into smoothies.public.orders(ingredients) values('Cantaloupe Guava Jackfruit Elderberries Figs ');
+
+-- validating
+select * from smoothies.public.orders; -- every changes is getting reflected
+
+truncate table smoothies.public.orders;
+
+select current_timestamp;
+
+alter table smoothies.public.orders
+add column name_on_order varchar(100);
+
+insert into smoothies.public.orders(ingredients, name_on_order) values('Blueberries Ziziphus Jujube Raspberries Ximenia ', 'Gina''s Smoothie');
+
+
+alter table smoothies.public.orders
+add column order_filled boolean default FALSE;
+
+update smoothies.public.orders
+       set order_filled = false
+       where name_on_order is null;
+
+-- Create a Sequence to Use as a Row ID
+create sequence smoothies.public.order_seq
+    start = 1
+    increment = 2
+    order
+    comment = 'Provide a unique id for each smoothie order';
+
+--  Add the Unique ID Column  
+alter table smoothies.public.orders
+add column order_uid integer -- add column
+default smoothies.public.order_seq.nextval -- getting next value from seq
+constraint order_uid unique enforced; -- make sure its unique
+
+-- Cannot add column 'ORDER_UID' with non-constant default to non-empty table 'ORDERS'.
+truncate table smoothies.public.orders;
+
+-- re-creating the table again with DDL
+create or replace table smoothies.public.orders (
+       order_uid integer default smoothies.public.order_seq.nextval,
+       order_filled boolean default false,
+       name_on_order varchar(100),
+       ingredients varchar(200),
+       constraint order_uid unique (order_uid),
+       order_ts timestamp_ltz default current_timestamp()
+);
+
+
+select * from smoothies.public.orders;
+truncate table smoothies.public.orders;
+
+select * from smoothies.public.fruit_options where fruit_name in ('Apples', 'Blueberries', 'Jackfruit', 'Raspberries', 'Strawberries');
+
+alter table smoothies.public.fruit_options
+add column search_on varchar;
+
+update smoothies.public.fruit_options
+set search_on = 'Strawberry'
+where fruit_name = 'Strawberries';
+
+
+// What is VARIABLES?
+
+set mystery_bag = 'This bag is empty!!';
+select $mystery_bag;
+
+set var1=2;
+set var2=3;
+set var3=7;
+
+select $var1+$var2+$var3;
+
+// What is a Function?
+-- A function is a way to make your code more organized. If you plan to do a certain thing many times, you can put the code into a little module called a FUNCTION.
+
+use database util_db;
+
+create or replace function sum_mystery_bag_vars(var1 number, var2 number, var3 number)
+returns number as 'select var1+var2+var3';
+
+-- direct calling
+select sum_mystry_bag_vars(12,36,204);
+
+-- calling with variables
+set eeny= 4;
+set meeny= 67.2;
+set miney_mo= -39;
+
+select sum_mystry_bag_vars($eeny, $meeny, $miney_mo);
+
+--  Snowflake Functions versus User-Defined Functions
+set alternating_caps_phrase = 'aLtErNaTiNg CaPs';
+select initcap($alternating_caps_phrase);
+
+create function NEUTRALIZE_WHINING(var text)
+returns text as 'select initcap(var)';
+
+select NEUTRALIZE_WHINING('aLtErNaTiNg CaPs');

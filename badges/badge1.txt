@@ -1,0 +1,561 @@
+--Be sure to set your context menus
+create or replace table ROOTH_DEPTH(
+    ROOTH_DEPTH_ID number(1),
+    ROOTH_DEPTH_CODE text(1),
+    ROOTH_DEPTH_NAME text(7),
+    UNIT_OF_MEASURE text(2),
+    RANGE_MIN number(2),
+    RANGE_MAX number(2)
+);
+
+-- debugging steps
+-- 1. validate schema using 
+show tables in account;
+-- 2. if found in the wrong schema use the below command
+--  I have fixed the table name from ROOTH_DEPTH to ROOT_DEPTH above
+alter table GARDEN_PLANTS.VEGGIES.ROOTH_DEPTH
+rename to GARDEN_PLANTS.VEGGIES.ROOT_DEPTH;
+
+-- 3. view snowflake definition. Snowflake made the following changes
+create or replace TABLE GARDEN_PLANTS.VEGGIES.ROOT_DEPTH (
+	ROOTH_DEPTH_ID NUMBER(1,0),
+	ROOTH_DEPTH_CODE VARCHAR(1),
+	ROOTH_DEPTH_NAME VARCHAR(7),
+	UNIT_OF_MEASURE VARCHAR(2),
+	RANGE_MIN NUMBER(2,0),
+	RANGE_MAX NUMBER(2,0)
+);
+--  a. Snowflake added a comma and digit to represent the number of decimals in each NUMBER column.
+--  b. Snowflake converted the TEXT data type to VARCHAR.
+
+insert into root_depth 
+values
+(
+    1,
+    'S',
+    'Shallow',
+    'cm',
+    30,
+    45
+);
+
+-- You can use it to quickly ask for all columns using (*)
+-- You can use it to quickly ask for a limited set of rows using LIMIT.
+select * from root_depth limit 1;
+
+insert into root_depth 
+values
+(
+    2,
+    'M',
+    'Medium',
+    'cm',
+    45,
+    60
+),
+(
+    3,
+    'L',
+    'Large',
+    'cm',
+    60,
+    90
+);
+
+select * from root_depth limit 5;
+
+------------------------------------------------------------------------------------------
+--THESE ARE JUST EXAMPLES YOU SHOULD NOT RUN THIS CODE WITHOUT EDITING IT FOR YOUR NEEDS
+-----------------------------------------------------------------------------------------
+
+--To add more than one row at a time
+insert into root_depth (root_depth_id, root_depth_code
+                        , root_depth_name, unit_of_measure
+                        , range_min, range_max)  
+values
+                        (5, 'X','short', 'in', 66, 77)
+                       ,(8, 'Y', 'tall', 'cm', 98, 99);
+
+-- To remove a row you do not want in the table
+delete from root_depth
+where rooth_depth_id in (1,2,3);
+
+--To change a value in a column for one particular row
+update root_depth
+set root_depth_id = 7
+where root_depth_id = 9;
+
+--To remove all the rows and start over
+truncate table root_depth;
+
+-- In Snowflake, Warehouses are "workforces" 
+-- Teams are Clusters, Team Members are Servers
+-- Scaling Up and Down (vertically)
+-- Scaling In and Out (horizontally)
+--  a. SCALING OUT (Snapping Back)
+
+-- IMPORTANT
+-- A cluster just means a "group" of servers.
+-- A cluster can hold multiple servers.
+-- The number of servers in a warehouse is different, based on size (XS, S, M, etc)
+-- An XS-sized warehouse (not scaled out) has 1 cluster.
+-- An M-sized warehouse (not scaled out) has 1 cluster.
+-- An XS-sized Warehouse, when scaled out, has more than 1 cluster.
+-- An M-sized Warehouse, when scaled out, has more than 1 cluster.
+
+create or replace table vegetable_details(
+    plant_name varchar(25),
+    root_depth_code varchar(1)
+);
+
+-- load the data from UI using the given CSV file and run
+select * from vegetable_details limit 10;
+-- load more data from UI using the TSV file and run
+select * from vegetable_details;
+
+select * from vegetable_details
+where plant_name='Spinach'
+and root_depth_code = 'D';
+
+delete from vegetable_details
+where plant_name='Spinach'
+and root_depth_code = 'D';
+
+select * from vegetable_details;
+
+-- creating another GARDEN_PLANTS.FLOWERS.FLOWER_DETAILS table
+create or replace TABLE FLOWER_DETAILS (
+	PLANT_NAME VARCHAR(25),
+	ROOT_DEPTH_CODE VARCHAR(1)
+);
+
+-- data will be added into it using Snowflake Notebook
+
+-- creating another GARDEN_PLANTS.FRUITS.FRUIT_DETAILS table
+create or replace TABLE FRUIT_DETAILS (
+	PLANT_NAME VARCHAR(25),
+	ROOT_DEPTH_CODE VARCHAR(1)
+);
+
+select * from fruit_details;
+
+-- Create a Snowflake Stage Object and load txt file
+
+-- Create a Table for Soil Types
+create or replace table vegetable_details_soil_type (
+    plat_name varchar(25)
+    ,soil_type number(1,0)
+);
+
+-- Create a CSV File Format for PIPE seperated files
+create file format garden_plants.veggies.PIPECOLSEP_ONEHEADROW
+type = 'CSV' --csv is used for any flat file (tsv, pipe-separated, etc)
+field_delimiter = '|' --pipes as column separators
+skip_header = 1 --one header row to skip
+;
+
+-- A Copy Into Statement You Can Run
+copy into vegetable_details_soil_type
+from @util_db.public.my_internal_stage
+files = ('VEG_NAME_TO_SOIL_TYPE_PIPE.txt')
+file_format = (format_name = garden_plants.veggies.PIPECOLSEP_ONEHEADROW);
+
+-- Create a CSV File Format for TAB seperated files
+create or replace file format garden_plants.veggies.COMMASEP_DBLQUOT_ONEHEADROW 
+type = 'CSV'
+field_delimiter = ','--pipes as column separators
+skip_header = 1
+FIELD_OPTIONALLY_ENCLOSED_BY = '"' --this means that some values will be wrapped in double-quotes bc they 
+;
+
+--The data in the file, with no FILE FORMAT specified
+select $1
+from @util_db.public.my_internal_stage/LU_SOIL_TYPE.tsv;
+
+--Same file but with one of the file formats we created earlier  
+select $1, $2, $3
+from @util_db.public.my_internal_stage/LU_SOIL_TYPE.tsv
+(file_format => garden_plants.veggies.COMMASEP_DBLQUOT_ONEHEADROW);
+
+--Same file but with the other file format we created earlier
+select $1, $2, $3
+from @util_db.public.my_internal_stage/LU_SOIL_TYPE.tsv
+(file_format => garden_plants.veggies.PIPECOLSEP_ONEHEADROW );
+
+-- challenge format
+create file format garden_plants.veggies.L9_CHALLENGE_FF 
+TYPE = 'CSV'
+FIELD_DELIMITER = '\t'
+SKIP_HEADER = 1
+FIELD_OPTIONALLY_ENCLOSED_BY = '"';
+
+-- Create a Soil Type Look Up Table
+create or replace table LU_SOIL_TYPE(
+SOIL_TYPE_ID number,	
+SOIL_TYPE varchar(15),
+SOIL_DESCRIPTION varchar(75)
+ );
+
+ copy into LU_SOIL_TYPE
+ from @UTIL_DB.PUBLIC.MY_INTERNAL_STAGE
+ files = ('LU_SOIL_TYPE.tsv')
+ file_format = (format_name = garden_plants.veggies.L9_CHALLENGE_FF);
+
+ select * from LU_SOIL_TYPE;
+
+ ------------
+ -- CHALLENGE
+ ------------
+
+create or replace file format garden_plants.veggies.COMMASEP_DBLQUOT_ONEHEADROW 
+type = 'CSV'
+field_delimiter = ','--pipes as column separators
+skip_header = 1
+FIELD_OPTIONALLY_ENCLOSED_BY = '"' --this means that some values will be wrapped in double-quotes bc they 
+;
+
+ select $1, $2, $3, $4
+ from @util_db.public.my_internal_stage/veg_plant_height.csv
+ (file_format => garden_plants.veggies.COMMASEP_DBLQUOT_ONEHEADROW);
+
+ create or replace table VEGETABLE_DETAILS_PLANT_HEIGHT(
+    PLANT_NAME varchar(25),
+    UOM varchar(1),
+    LOW_END_OF_RANGE number(2),
+    HIGH_END_OF_RANGE number(2)
+ );
+
+ copy into vegetable_details_plant_height
+ from @util_db.public.my_internal_stage
+ files = ('veg_plant_height.csv')
+ file_format = (format_name =  garden_plants.veggies.COMMASEP_DBLQUOT_ONEHEADROW);
+
+ select * from vegetable_details_plant_height;
+
+ 
+--=====================================
+-- LESSN 10: Data Storage Striucture
+--=====================================
+
+// set role
+use role sysadmin;
+
+// Create a new database and set the context to use the new database
+create database library_card_catalog comment = 'DWW Lesson 10 ';
+
+//Set the worksheet context to use the new database
+use database library_card_catalog;
+use role sysadmin;
+
+// Create the book table and use AUTOINCREMENT to generate a UID for each new row
+
+create or replace table book
+( book_uid number autoincrement
+ , title varchar(50)
+ , year_published number(4,0)
+);
+
+// Insert records into the book table
+// You don't have to list anything for the
+// BOOK_UID field because the AUTOINCREMENT property 
+// will take care of it for you
+
+insert into book(title, year_published)
+values
+ ('Food',2001)
+,('Food',2006)
+,('Food',2008)
+,('Food',2016)
+,('Food',2015);
+
+// Check your table. Does each row have a unique id? 
+select * from book;
+
+
+// Create Author table
+create or replace table author (
+   author_uid number 
+  ,first_name varchar(50)
+  ,middle_name varchar(50)
+  ,last_name varchar(50)
+);
+
+// Insert the first two authors into the Author table
+insert into author(author_uid, first_name, middle_name, last_name)  
+values
+(1, 'Fiona', '','Macdonald')
+,(2, 'Gian','Paulo','Faleschini');
+
+// Look at your table with it's new rows
+select * from author;
+
+-- create sequence (autoincremnt)
+create sequence SEQ_AUTHOR_UID
+start 1
+increment 1
+ORDER 
+comment = 'Use this to fill AUTHOR ID';
+
+//See how the nextval function works
+select seq_author_uid.nextval;
+
+//See how the nextval function works
+select seq_author_uid.nextval, seq_author_uid.nextval;
+
+show sequences;
+
+//Drop and recreate the counter (sequence) so that it starts at 3 
+// then we'll add the other author records to our author table
+create or replace sequence library_card_catalog.public.seq_author_uid
+start = 3 
+increment = 1 
+ORDER
+comment = 'Use this to fill in the AUTHOR_UID every time you add a row';
+
+//Add the remaining author records and use the nextval function instead 
+//of putting in the numbers
+insert into author(author_uid,first_name, middle_name, last_name) 
+values
+(seq_author_uid.nextval, 'Laura', 'K','Egendorf')
+,(seq_author_uid.nextval, 'Jan', '','Grover')
+,(seq_author_uid.nextval, 'Jennifer', '','Clapp')
+,(seq_author_uid.nextval, 'Kathleen', '','Petelinsek');
+
+// Look at your table with it's new rows
+select * from author;
+
+// Normalize Relational Table
+-- 1. Different ENtities in seperate tables.
+-- 2. Same info not repeated unnecessarily
+-- 3. Uniquw ID for each row.
+
+// Create the relationships table
+// this is sometimes called a "Many-to-Many table"
+create table book_to_author
+( book_uid number
+  ,author_uid number
+);
+
+//Insert rows of the known relationships
+insert into book_to_author(book_uid, author_uid)
+values
+ (1,1)  // This row links the 2001 book to Fiona Macdonald
+,(1,2)  // This row links the 2001 book to Gian Paulo Faleschini
+,(2,3)  // Links 2006 book to Laura K Egendorf
+,(3,4)  // Links 2008 book to Jan Grover
+,(4,5)  // Links 2016 book to Jennifer Clapp
+,(5,6); // Links 2015 book to Kathleen Petelinsek
+
+//Check your work by joining the 3 tables together
+//You should get 1 row for every author
+select * 
+from book_to_author ba 
+join author a 
+on ba.author_uid = a.author_uid 
+join book b 
+on b.book_uid=ba.book_uid; 
+
+--================================================
+-- LESSN 11: INTRODUCTION TO SEMI STRUCTURE DATA
+--================================================
+
+// Create an Ingestion Table for JSON Data
+create table library_card_catalog.public.author_ingest_json
+(
+  raw_author variant
+);
+
+//Create File Format for JSON Data 
+create or replace file format library_card_catalog.public.json_file_format
+type = 'JSON' 
+compression = 'AUTO' 
+enable_octal = FALSE
+allow_duplicate = FALSE 
+strip_outer_array = TRUE
+strip_null_values = FALSE
+ignore_utf8_errors = FALSE; 
+
+select $1
+from @util_db.public.my_internal_stage/author_with_header.json
+(file_format =>  library_card_catalog.public.json_file_format);
+
+copy into author_ingest_json
+from @util_db.public.my_internal_stage
+files = ('author_with_header.json')
+file_format = (format_name =  library_card_catalog.public.json_file_format);
+
+select * from author_ingest_json;
+
+//returns AUTHOR_UID value from top-level object's attribute
+select raw_author:AUTHOR_UID
+from author_ingest_json;
+
+//returns the data in a way that makes it look like a normalized table
+SELECT 
+ raw_author:AUTHOR_UID
+,raw_author:FIRST_NAME::STRING as FIRST_NAME
+,raw_author:MIDDLE_NAME::STRING as MIDDLE_NAME
+,raw_author:LAST_NAME::STRING as LAST_NAME
+FROM AUTHOR_INGEST_JSON;
+
+--================================================
+-- LESSN 11: NESTED SEMI STRUCTURE DATA
+--================================================
+
+// Create an Ingestion Table for the NESTED JSON Data
+create or replace table library_card_catalog.public.nested_ingest_json 
+(
+  raw_nested_book VARIANT
+);
+
+select $1
+from @util_db.public.my_internal_stage/json_book_author_nested.json
+(file_format => library_card_catalog.public.json_file_format);
+
+
+copy into nested_ingest_json
+from @util_db.public.my_internal_stage
+files = ('json_book_author_nested.json')
+file_format = (format_name = library_card_catalog.public.json_file_format);
+
+//a few simple queries
+select raw_nested_book
+from nested_ingest_json;
+
+select raw_nested_book:year_published
+from nested_ingest_json;
+
+select raw_nested_book:authors
+from nested_ingest_json;
+
+//Use these example flatten commands to explore flattening the nested book and author data
+select value:first_name
+from nested_ingest_json
+, lateral flatten (input => raw_nested_book:authors);
+
+select value:first_name
+from nested_ingest_json
+, table(flatten(raw_nested_book:authors));
+
+//Add a CAST command to the fields returned
+select value:first_name::varchar, value:last_name::varchar
+from nested_ingest_json
+, lateral flatten( input => raw_nested_book:authors);
+
+//Assign new column  names to the columns using "AS"
+select value:first_name::varchar AS "first_name"
+    , value:last_name::varchar AS "last_name"
+from nested_ingest_json
+, lateral flatten (input => raw_nested_book:authors);
+
+// Create the Tweets Database Infrastructure 
+
+-- 1. Create a database named SOCIAL_MEDIA_FLOODGATES
+create database SOCIAL_MEDIA_FLOODGATES;
+use SOCIAL_MEDIA_FLOODGATES;
+
+-- 2. Create a table called TWEET_INGEST in the PUBLIC schema of your new database. 
+-- The new table only needs 1 column (you should know the datatype, since this is JSON data). 
+-- Name the column RAW_STATUS
+create table TWEET_INGEST (
+    RAW_STATUS VARIANT
+);
+
+-- 3. Create a FILE FORMAT that is type JSON that you can use to load the file. 
+create file format social_media_floodgates.public.json_tweet_format
+type = 'JSON'
+compression = 'AUTO'
+enable_octal = FALSE
+allow_duplicate = FALSE 
+strip_outer_array = TRUE
+strip_null_values = FALSE
+ignore_utf8_errors = FALSE;
+
+-- testing format
+select $1
+from @util_db.public.my_internal_stage/nutrition_tweets.json
+(file_format => social_media_floodgates.public.json_tweet_format);
+
+-- 4. Write a COPY INTO statement that loads the tweet data into the table. 
+-- You will probably need to stage the file somewhere - you can decide where.
+copy into tweet_ingest
+from @util_db.public.my_internal_stage
+files = ('nutrition_tweets.json')
+file_format = (format_name = social_media_floodgates.public.json_tweet_format);
+
+//simple select statements -- are you seeing 9 rows?
+select raw_status
+from tweet_ingest;
+
+select raw_status:entities
+from tweet_ingest;
+
+select raw_status:entities:hashtags
+from tweet_ingest;
+
+//Explore looking at specific hashtags by adding bracketed numbers
+//This query returns just the first hashtag in each tweet
+select raw_status:entities:hashtags[0].text
+from tweet_ingest;
+
+//This version adds a WHERE clause to get rid of any tweet that 
+//doesn't include any hashtags
+select raw_status:entities:hashtags[0].text
+from tweet_ingest
+where raw_status:entities:hashtags[0].text is not null;
+
+//Perform a simple CAST on the created_at key
+//Add an ORDER BY clause to sort by the tweet's creation date
+select raw_status:created_at::date
+from tweet_ingest
+order by raw_status:created_at::date;
+
+//Flatten statements can return nested entities only (and ignore the higher level objects)
+select value
+from tweet_ingest
+,lateral flatten
+(input => raw_status:entities:urls);
+
+select value
+from tweet_ingest
+,table(flatten(raw_status:entities:urls));
+
+//Flatten and return just the hashtag text, CAST the text as VARCHAR
+select value:text::varchar as hashtag_used
+from tweet_ingest
+,lateral flatten
+(input => raw_status:entities:hashtags);
+
+//Add the Tweet ID and User ID to the returned table so we could join the hashtag back to it's source tweet
+select raw_status:user:name::text as user_name
+,raw_status:id as tweet_id
+,value:text::varchar as hashtag_used
+from tweet_ingest
+,lateral flatten
+(input => raw_status:entities:hashtags);
+
+-- Create a View of the URL Data Looking "Normalized"
+create or replace view social_media_floodgates.public.urls_normalized as
+(select raw_status:user:name::text as user_name
+,raw_status:id as tweet_id
+,value:display_url::text as url_used
+from tweet_ingest
+,lateral flatten
+(input => raw_status:entities:urls)
+);
+
+select * from social_media_floodgates.public.urls_normalized;
+
+-- task : HASHTAGS_NORMALIZED
+create or replace view HASHTAGS_NORMALIZED as
+(select raw_status:user:name::text as user_name
+,raw_status:id as tweet_id
+,value:text::varchar as hashtag_used
+from tweet_ingest
+, lateral flatten
+(input => raw_status:entities:hashtags)
+);
+
+select * from social_media_floodgates.public.hashtags_normalized;
+
+

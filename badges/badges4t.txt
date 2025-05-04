@@ -1,0 +1,989 @@
+--  Try This Fake Table to View Data Type Symbols
+
+create or replace table util_db.public.my_data_types
+(
+  my_number number
+, my_text varchar(10)
+, my_bool boolean
+, my_float float
+, my_date date
+, my_timestamp timestamp_tz
+, my_variant variant
+, my_array array
+, my_object object
+, my_geography geography
+, my_geometry geometry
+, my_vector vector(int,16)
+);
+
+--  Create a Database for Zena's Athleisure Idea
+
+create database ZENAS_ATHLEISURE_DB;
+drop schema public;
+create schema ZENAS_ATHLEISURE_DB.PRODUCTS;
+
+-- NOTE: Snowflake Stage Object is most accurately thought of as a named gateway into a cloud folder
+
+-- Q: Which of these statements is the most durable and flexible definition of a Snowflake Stage Object?
+-- A: It's a named gateway that allows Snowflake users to easily connect to cloud folders and access the data stored in them.
+
+-- List Commands Versus Select Statements 
+list @product_metadata;
+list @zenas_athleisure_db.products.product_metadata;
+
+-- Simple Selects on Non-Loaded Data
+select $1
+from @product_metadata/product_coordination_suggestions.txt;
+
+select $1
+from @product_metadata/sweatsuit_sizes.txt;
+
+select $1
+from @product_metadata/swt_product_line.txt;
+
+-- CRLF (Carriage Return Line Feed)
+
+-- Q: If we don't tell Snowflake anything about our file structure, what will it presume about the structure?
+-- The file structure is flat (not nested).
+-- The data rows are separated by Carriage Return/Line Feed symbols.
+-- The data columns are separated using commas.
+
+--=======================================
+-- product_coordination_suggestions.txt
+--=======================================
+
+// THEORY #01
+
+-- Create an Exploratory File Format
+create file format zmd_file_format_1
+record_delimiter='^';
+
+-- Use the Exploratory File Format in a Query
+select $1
+from @product_metadata/product_coordination_suggestions.txt
+(file_format => zmd_file_format_1); -- 10 rows
+
+
+// THEORY #02
+
+create file format zmd_file_format_2
+FIELD_DELIMITER = '^';  
+
+select $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+from @product_metadata/product_coordination_suggestions.txt
+(file_format => zmd_file_format_2); -- 1 row, 10 columns
+
+
+-- Q: Comma Separated files use Commas as the symbol for column separation. What is another name for "Column Separator"?
+-- A: Field Delimiter
+
+// A Third Possibility?
+
+create file format zmd_file_format_3
+record_delimiter = '^'
+field_delimiter = '='
+trim_space = True;
+
+select  REPLACE($1, '\r\n'), $2
+from @product_metadata/product_coordination_suggestions.txt
+(file_format => zmd_file_format_3);
+
+-- Q:In an earlier Workshop, we learned that FILE FORMATS are essential tools for loading data. What additional use for FILE FORMATS have we now discovered?
+-- A: File formats can also be helpful when querying staged files.
+
+-- creatiing view zenas_athleisure_db.products.SWEATBAND_COORDINATION
+create or replace view zenas_athleisure_db.products.SWEATBAND_COORDINATION
+as select 
+    REPLACE($1, '\r\n') as product_code
+    , $2 as has_matching_sweatsuit
+from @product_metadata/product_coordination_suggestions.txt
+(file_format => zmd_file_format_3);
+
+select * from zenas_athleisure_db.products.SWEATBAND_COORDINATION;
+
+--======================
+-- sweatsuit_sizes.txt
+--======================
+
+-- Create an Exploratory File Format
+create or replace file format zmd_file_format_1
+record_delimiter=';'
+trim_space = True;
+
+select $1 as sizes_available
+from @product_metadata/sweatsuit_sizes.txt
+(file_format => zmd_file_format_1 ); -- 1 column and 18 rows
+
+-- Dealing with Unexpected Characters
+-- SQL has a function, CHR() or CHAR() [both versions work fine] that will allow you to reference ASCII characters by their numbers. 
+-- So, chr(13) is the same as the Carriage Return character and chr(10) is the same as the Line Feed character.
+
+select replace($1, char(13)||char(10)) as sizes_available
+from @product_metadata/sweatsuit_sizes.txt
+(file_format => zmd_file_format_1 );
+
+-- Instead of using:
+-- a. REPLACE($1, chr(13)||char(10)) 
+-- You could use: 
+-- b. REPLACE($1, concat(chr(13),chr(10))
+-- Or you could use: 
+-- c. REPLACE($1, '\r\n')
+
+-- Delaign with Ending null row by exempting null ROW
+select replace($1, char(13)||char(10)) as sizes_available
+from @product_metadata/sweatsuit_sizes.txt
+(file_format => zmd_file_format_1 )
+where sizes_available <> '';
+
+--  Convert Your Select to a View
+create view zenas_athleisure_db.products.sweatsuit_sizes
+as select replace($1, char(13)||char(10)) as sizes_available
+from @product_metadata/sweatsuit_sizes.txt
+(file_format => zmd_file_format_1 )
+where sizes_available <> '';
+
+select * from zenas_athleisure_db.products.sweatsuit_sizes;
+
+--======================
+-- swt_product_line.txt
+--======================
+
+create or replace file format zmd_file_format_2
+record_delimiter = ';'
+field_delimiter = '|'
+trim_space = TRUE;
+
+select $1, $2, $3
+from @product_metadata/swt_product_line.txt
+(file_format => zmd_file_format_2 ); -- 1 column and 18 rows
+
+-- Q: What effect did adding [TRIM_SPACE = True] to the file format have on the data returned from the SELECT statement?
+-- It removed the leading space from Row 9, Column 2.
+-- It removed the leading space from Row 10, Column 2.
+
+-- Dealing with Null is start of first column
+select 
+    REPLACE($1, '\r\n') as product_code
+    , $2 as headband_description
+    , $3 as wristband_description
+from @product_metadata/swt_product_line.txt
+(file_format => zmd_file_format_2 );
+
+-- creating view zenas_athleisure_db.products.SWEATBAND_PRODUCT_LINE
+create view zenas_athleisure_db.products.SWEATBAND_PRODUCT_LINE
+as select
+    REPLACE($1, '\r\n') as product_code
+    , $2 as headband_description
+    , $3 as wristband_description
+from @product_metadata/swt_product_line.txt
+(file_format => zmd_file_format_2 );
+
+select * from zenas_athleisure_db.products.SWEATBAND_PRODUCT_LINE;
+
+
+// final reviw
+
+select product_code, has_matching_sweatsuit
+from zenas_athleisure_db.products.sweatband_coordination; -- 10 rows
+
+
+select product_code, headband_description, wristband_description
+from zenas_athleisure_db.products.sweatband_product_line; -- 10 rows
+
+select sizes_available
+from zenas_athleisure_db.products.sweatsuit_sizes; -- 18 rows
+
+
+// -------- section 4 ---------------
+
+-- Run a List Command On the SWEATSUITS Stage
+list @sweatsuits;
+
+-- specific pic
+select $1
+from @sweatsuits/purple_sweatsuit.png; 
+
+-- Q: What happens when you query a file in the SWEATSUIT stage using SELECT $1?
+-- A: get an error message. ( ERRORL:  File 'purple_sweatsuit.png', line 1, character 1 Row 1, column "TRANSIENT_STAGE_TABLE"["$1":1])
+
+select metadata$filename, metadata$file_row_number
+from @sweatsuits/purple_sweatsuit.png;
+
+-- Q: What did the query above return?
+-- A: A lot of rows representing the Purple Sweatsuit file.
+
+select metadata$filename, count(metadata$file_row_number) as number_of_rows
+from @sweatsuits
+group by metadata$filename
+order by metadata$filename;
+
+-- NOTE: File formats come in 6 flavors - CSV, JSON, XML, PARQUET, ORC, & AVRO. Notice that nothing in that list says "PDF" or "Image" or "PNG" or "JPG." 
+
+select * from directory(@sweatsuits);
+
+-- Q: What columns does the directory table query return?
+-- A: RELATIVE_PATH, SIZE, LAST_MODIFIED, MD%, WTAG, FILE_URL
+
+-- exploring
+select 
+    replace(relative_path, '_', ' ') no_underscore_filename
+    , replace(no_underscore_filename, '.png') as just_word_filename
+    , initcap(just_word_filename) as product_name
+from directory(@sweatsuits);
+
+-- nested form 
+select initcap(replace(replace(relative_path, '_', ' '), '.png')) as product_name
+from directory(@sweatsuits);
+
+// join a directory table to a regular, internal Snowflake table?
+-----------------------------------------------------------------
+
+--create an internal table for some sweatsuit info
+create or replace table zenas_athleisure_db.products.sweatsuits (
+	color_or_style varchar(25),
+	file_name varchar(50),
+	price number(5,2)
+);
+
+--fill the new table with some data
+insert into  zenas_athleisure_db.products.sweatsuits 
+          (color_or_style, file_name, price)
+values
+ ('Burgundy', 'burgundy_sweatsuit.png',65)
+,('Charcoal Grey', 'charcoal_grey_sweatsuit.png',65)
+,('Forest Green', 'forest_green_sweatsuit.png',64)
+,('Navy Blue', 'navy_blue_sweatsuit.png',65)
+,('Orange', 'orange_sweatsuit.png',65)
+,('Pink', 'pink_sweatsuit.png',63)
+,('Purple', 'purple_sweatsuit.png',64)
+,('Red', 'red_sweatsuit.png',68)
+,('Royal Blue',	'royal_blue_sweatsuit.png',65)
+,('Yellow', 'yellow_sweatsuit.png',67);
+
+select * from zenas_athleisure_db.products.sweatsuits;
+select * from directory(@sweatsuits);
+
+-- join a directory table to a regular, internal Snowflake table?
+select initcap(replace(replace(FILE_NAME, '_', ' '), '.png')) as product_name, * 
+from directory(@sweatsuits) ds
+inner join zenas_athleisure_db.products.sweatsuits s
+on s.FILE_NAME = ds.RELATIVE_PATH;
+
+-- Create a view named PRODUCT_LIST. 
+create view zenas_athleisure_db.products.product_list
+as select 
+    initcap(replace(replace(FILE_NAME, '_', ' '), '.png')) as product_name
+    ,FILE_NAME
+    ,COLOR_OR_STYLE
+    ,PRICE
+    ,FILE_URL
+from directory(@sweatsuits) ds
+inner join zenas_athleisure_db.products.sweatsuits s
+on s.FILE_NAME = ds.RELATIVE_PATH;
+
+-- validating view
+select * from zenas_athleisure_db.products.product_list;
+
+-- create fake sweat suit listings for every color in the PRODUCT_LIST view, and every size in the SWEATSUIT_SIZES view we created earlier.
+
+select * 
+from zenas_athleisure_db.products.product_list
+cross join zenas_athleisure_db.products.sweatsuit_sizes;
+
+-- Convert Your Select Statement to a View
+create view catalog
+as select * 
+from zenas_athleisure_db.products.product_list
+cross join zenas_athleisure_db.products.sweatsuit_sizes;
+
+-- valdiate 
+select * from catalog;
+
+-- Q: When we talk about Data Lakes in Snowflake, what do we mean?
+-- A: Data that is left outside of Snowflake tables but can be accessed using Snowflake tools.
+
+// Add the Upsell Table and Populate It
+// Add another internal table and do few more things.
+
+-- Add a table to map the sweatsuits to the sweat band sets
+create table zenas_athleisure_db.products.upsell_mapping
+(
+sweatsuit_color_or_style varchar(25)
+,upsell_product_code varchar(10)
+);
+
+--populate the upsell table
+insert into zenas_athleisure_db.products.upsell_mapping
+(
+sweatsuit_color_or_style
+,upsell_product_code 
+)
+VALUES
+('Charcoal Grey','SWT_GRY')
+,('Forest Green','SWT_FGN')
+,('Orange','SWT_ORG')
+,('Pink', 'SWT_PNK')
+,('Red','SWT_RED')
+,('Yellow', 'SWT_YLW');
+
+-- Zena needs a single view she can query for her website prototype
+create view catalog_for_website as 
+select color_or_style
+,price
+,file_name
+, get_presigned_url(@sweatsuits, file_name, 3600) as file_url
+,size_list
+,coalesce('Consider: ' ||  headband_description || ' & ' || wristband_description, 'Consider: White, Black or Grey Sweat Accessories')  as upsell_product_desc
+from
+(   select color_or_style, price, file_name
+    ,listagg(sizes_available, ' | ') within group (order by sizes_available) as size_list
+    from catalog
+    group by color_or_style, price, file_name
+) c
+left join upsell_mapping u
+on u.sweatsuit_color_or_style = c.color_or_style
+left join sweatband_coordination sc
+on sc.product_code = u.upsell_product_code
+left join sweatband_product_line spl
+on spl.product_code = sc.product_code;
+
+select * from zenas_athleisure_db.products.catalog_for_website;
+
+--*********************************************************************
+
+-- Q: What kind of data does Camila have that might be helpful for Mel's project?
+-- A: GPS Trail Data from their bike rides
+
+//  Put Your Snowflake Skills to Work!
+
+create database MELS_SMOOTHIE_CHALLENGE_DB;
+drop schema PUBLIC;
+create schema TRAILS;
+
+-- Add an internal named stage called TRAILS_GEOJSON
+CREATE STAGE TRAILS_GEOJSON 
+	DIRECTORY = ( ENABLE = true ) 
+	COMMENT = 'Adding Geo JSON gile inside this internal stage';
+
+-- Add an internal named stage called TRAILS_PARQUET
+CREATE STAGE TRAILS_PARQUET 
+	DIRECTORY = ( ENABLE = true ) 
+	COMMENT = 'Adding Geo JSON gile inside this internal stage';
+
+--  Create a Very Basic JSON File Format
+create file format FF_JSON
+type = JSON;
+
+-- Create a Very Basic Parquet File Format
+create file format FF_PARQUET 
+type = PARQUET;
+
+-- validation
+select * from @TRAILS_GEOJSON
+(file_format => ff_json);
+
+select * from @TRAILS_PARQUET
+(file_format => ff_parquet); -- 3.5K
+
+-- Q: What issues do you see in the data?
+-- A: 
+-- 1. Latitude and Longitude are flipped.
+-- 2. The decimal in the Longitude value is not where we expected (Scientific Notation).
+-- 3. The decimal in the Latitude value is not where we expected (Scientific Notation).
+
+--*********************
+-- PARQUEST(LGN, LAT)
+--*********************
+
+-- SAMPLE DATA
+-- {
+--   "elevation": 1.579900000000000e+03,
+--   "latitude": -1.050083600000000e+02,
+--   "longitude": 3.975430990000000e+01,
+--   "sequence_1": 1,
+--   "sequence_2": 3526,
+--   "trail_name": "Cherry Creek Trail"
+-- }
+
+
+select
+    $1:elevation as elevation
+    ,$1:latitude as latitude
+    ,$1:longitude as longitude
+    ,$1:sequence_1 as sequence_1
+    ,$1:sequence_2 as sequence_2
+    ,$1:trail_name::varchar as trail_name
+from @trails_parquet
+(file_format => ff_parquet);
+
+-- Q:What issues do you see in the data?
+-- 1. Latitude and Longitude are flipped.
+-- 2. The decimal in the Longitude value is not where we expected (Scientific Notation).
+-- 3. The decimal in the Latitude value is not where we expected (Scientific Notation).
+
+// Use a Select Statement to Fix Some Issues
+
+select 
+    $1:sequence_1 as point_id,
+    $1:trail_name::varchar as trail_name,
+    $1:latitude::number(11,8) as lng,
+    $1:longitude::number(11,8) as lat
+from @trails_parquet
+(file_format => ff_parquet)
+order by point_id;
+
+// Create a View Called CHERRY_CREEK_TRAIL
+
+create or replace view CHERRY_CREEK_TRAIL
+as select 
+    $1:sequence_1 as point_id,
+    $1:trail_name::varchar as trail_name,
+    $1:latitude::number(11,8) as lng,
+    $1:longitude::number(11,8) as lat
+from @trails_parquet
+(file_format => ff_parquet)
+order by point_id;
+
+select * from CHERRY_CREEK_TRAIL;
+
+// Use || to Chain Lat and Lng Together into Coordinate Sets!
+
+select top 100
+    lng|| ' '||lat as coord_point
+    , 'POINT('||coord_point||')' as trail_point
+from cherry_creek_trail;
+
+
+// To add a column, we have to replace the entire view
+// changes to the original are shown in red
+
+create or replace view CHERRY_CREEK_TRAIL
+as select 
+    $1:sequence_1 as point_id,
+    $1:trail_name::varchar as trail_name,
+    $1:latitude::number(11,8) as lng,
+    $1:longitude::number(11,8) as lat,
+    lng|| ' '||lat as coord_pair
+from @trails_parquet
+(file_format => ff_parquet)
+order by point_id;
+
+select * from cherry_creek_trail;
+
+// Run this SELECT and Paste the Results into WKT Playground
+
+-- FORMAT
+-- LINESTRING(
+-- Coordinate Pair
+-- COMMA
+-- Coordinate Pair
+-- COMMA
+-- Coordinate Pair
+-- (etc)
+-- ) 
+
+select 
+'LINESTRING('||
+listagg(coord_pair, ',') 
+within group (order by point_id)
+||')' as my_linestring
+from cherry_creek_trail
+where point_id <= 10 
+      -- and point_id <= 2450
+group by trail_name;
+
+--*******
+-- JSON
+--*******
+
+//  Look at the geoJSON Data
+
+select $1
+from @trails_geojson
+(file_format => ff_json);
+
+// Parsing data
+
+select 
+    $1:features[0]:properties::string as feature_name
+    , $1:features[0]:geometry:coordinates::string as feature_coordiantes
+    , $1:features[0]:geometry::string as geomatery
+    , $1:features[0]:properties::string as feature_properties
+    , $1:crs:properties:name::string as specs
+    , $1 as whole_object
+from @trails_geojson
+(file_format => ff_json);
+
+
+//  Create a View Called DENVER_AREA_TRAILS
+
+create or replace view DENVER_AREA_TRAILS
+as select 
+    $1:features[0]:properties:Name::string as feature_name
+    , $1:features[0]:geometry:coordinates::string as feature_coordiantes
+    , $1:features[0]:geometry::string as geometry
+    , $1:features[0]:properties::string as feature_properties
+    , $1:crs:properties:name::string as specs
+    , $1 as whole_object
+from @trails_geojson
+(file_format => ff_json);
+
+select * from denver_area_trails;
+
+--************
+-- section:7
+--************
+
+// Research GeoSpatial Functions Available in Snowflake
+
+-- 1. Conversion / Input / Parsing
+-- 2. Conversion / Output / Formatting
+-- 3. Constructor Functions
+-- 4. Accessor Functions
+-- 5. Relationship and Measurement Functions
+-- 6. Transformation Functions
+-- 7. Utility Functions
+-- 8. H3 Functions
+
+-- Spatial Type => SP_
+
+
+--Remember this code? 
+select 
+'LINESTRING('||
+listagg(coord_pair, ',') 
+within group (order by point_id)
+||')' as my_linestring
+,st_length(TO_GEOGRAPHY(my_linestring)) as length_of_trail --this line is new! but it won't work!
+from cherry_creek_trail
+group by trail_name;
+
+// Calculate the Lengths for the Other Trails
+
+select
+    feature_name
+    ,st_length(to_geography(whole_object)) as wo_lenght
+    ,st_length(to_geography(whole_object)) as geom_length
+from denver_area_trails;
+
+select get_ddl('view', 'DENVER_AREA_TRAILS');
+
+
+
+create or replace view DENVER_AREA_TRAILS
+(
+	FEATURE_NAME,
+	FEATURE_COORDIANTES,
+	GEOMETRY,
+    TRAIL_LENGTH,
+	FEATURE_PROPERTIES,
+	SPECS,
+	WHOLE_OBJECT
+)
+copy grants
+as select 
+    $1:features[0]:properties:Name::string as feature_name
+    , $1:features[0]:geometry:coordinates::string as feature_coordiantes
+    , $1:features[0]:geometry::string as geometry
+    , st_length(to_geography($1)) as trail_length
+    , $1:features[0]:properties::string as feature_properties
+    , $1:crs:properties:name::string as specs
+    , $1 as whole_object
+from @trails_geojson
+(file_format => ff_json);
+
+// Create a View on Cherry Creek Data to Mimic the Other Trail Data
+
+-- select * from cherry_creek_trail;
+
+create or replace view DENVER_AREA_TRAILS_2 as
+select 
+    trail_name as feature_name
+    ,'{"coordinates":['||listagg('['||lng||','||lat||']',',') within group (order by point_id)||'],"type":"LineString"}' as geometry
+    ,st_length(to_geography(geometry))  as trail_length
+from cherry_creek_trail
+group by trail_name;
+
+select * from denver_area_trails_2;
+select * from denver_area_trails;
+
+// --Create a view that will have similar columns to DENVER_AREA_TRAILS
+
+select 
+    feature_name
+    ,to_geography(geometry),
+    trail_length
+from DENVER_AREA_TRAILS
+union all
+select 
+    feature_name
+    ,to_geography(geometry)
+    ,trail_length
+from DENVER_AREA_TRAILS_2;
+
+
+-- Q: What GeoSpatial Data Formats have we used in this workshop so far?
+-- 1. Well Known Text (WKT)
+-- 2. GeoJSON
+
+
+//  But Wait! There's More!
+
+--Add more GeoSpatial Calculations to get more GeoSpecial Information!
+
+create view trails_and_boundaries as 
+select feature_name
+, to_geography(geometry) as my_linestring
+, st_xmin(my_linestring) as min_eastwest
+, st_xmax(my_linestring) as max_eastwest
+, st_ymin(my_linestring) as min_northsouth
+, st_ymax(my_linestring) as max_northsouth
+, trail_length
+from DENVER_AREA_TRAILS
+union all
+select feature_name
+, to_geography(geometry) as my_linestring
+, st_xmin(my_linestring) as min_eastwest
+, st_xmax(my_linestring) as max_eastwest
+, st_ymin(my_linestring) as min_northsouth
+, st_ymax(my_linestring) as max_northsouth
+, trail_length
+from DENVER_AREA_TRAILS_2;
+
+select * from trails_and_boundaries;
+
+-- Q: What GeoSpatial Data Functions have we used in this workshop so far?
+-- TO_GEOGRAPHY()
+-- ST_LENGTH()
+-- ST_XMIN()
+-- ST_YMAX()
+
+select 'POLYGON(('|| 
+    min(min_eastwest)||' '||max(max_northsouth)||','|| 
+    max(max_eastwest)||' '||max(max_northsouth)||','|| 
+    max(max_eastwest)||' '||min(min_northsouth)||','|| 
+    min(min_eastwest)||' '||min(min_northsouth)||'))' AS my_polygon
+from trails_and_boundaries;
+
+
+--************
+-- section:8
+--************
+
+//  OpenStreetMap Denver - Examples
+
+-- Give me the length of a Way
+SELECT
+ID,
+ST_LENGTH(COORDINATES) AS LENGTH
+FROM DENVER.V_OSM_DEN_WAY;
+
+-- List the number of nodes in a Way
+SELECT
+ID,
+ST_NPOINTS(COORDINATES) AS NUM_OF_NODES
+FROM DENVER.V_OSM_DEN_WAY;
+
+-- Give me the distance between two Ways
+SELECT
+ A.ID AS ID_1,
+ B.ID AS ID_2,
+ ST_DISTANCE(A.COORDINATES, B.COORDINATES) AS DISTANCE
+FROM (SELECT
+ ID,
+ COORDINATES
+FROM DENVER.V_OSM_DEN_WAY
+WHERE ID = 705859567) AS A
+INNER JOIN (SELECT
+ ID,
+ COORDINATES
+FROM DENVER.V_OSM_DEN_WAY
+WHERE ID = 705859570) AS B;
+
+-- Give me all amenities from education category in a radius of 2,000 metres from a point
+SELECT *
+FROM DENVER.V_OSM_DEN_AMENITY_EDUCATION
+WHERE ST_DWITHIN(ST_POINT(-1.049212522000000e+02,
+    3.969829250000000e+01),COORDINATES,2000);
+
+-- Give me all food and beverage Shops in a radius of 2,000 metres from a point
+SELECT *
+FROM DENVER.V_OSM_DEN_SHOP_FOOD_BEVERAGES  
+WHERE ST_DWITHIN(ST_POINT(-1.049632800000000e+02,
+    3.974338330000000e+01),COORDINATES,2000);
+
+    
+-- Let's Choose a Location for Melanie's Café
+
+-- Q: At what real Denver intersection have we placed the fictional Melanie's Cafe?
+-- A: Bruce Randolph and Downing.
+
+
+// Using Variables in Snowflake Worksheets 
+
+-- Melanie's Location into a 2 Variables (mc for melanies cafe)
+set mc_lng='-104.97300245114094';
+set mc_lat='39.76471253574085';
+
+--Confluence Park into a Variable (loc for location)
+set loc_lng='-105.00840763333615'; 
+set loc_lat='39.754141917497826';
+
+--Test your variables to see if they work with the Makepoint function
+select st_makepoint($mc_lng,$mc_lat) as melanies_cafe_point;
+select st_makepoint($loc_lng,$loc_lat) as confluent_park_point;
+
+--use the variables to calculate the distance from 
+--Melanie's Cafe to Confluent Park
+select st_distance(
+        st_makepoint($mc_lng,$mc_lat)
+        ,st_makepoint($loc_lng,$loc_lat)
+        ) as mc_to_cp;
+
+
+// Let's Create a UDF for Measuring Distance from Melanie's Café
+
+CREATE OR REPLACE FUNCTION distance_to_mc(loc_lng number(38,32),loc_lat number(38,32))
+  RETURNS FLOAT
+  AS
+  $$
+   st_distance(
+        st_makepoint('-104.97300','39.76471')
+        ,st_makepoint(loc_lng,loc_lat)
+        )
+  $$;
+
+--Tivoli Center into the variables 
+set tc_lng='-105.00532059763648'; 
+set tc_lat='39.74548137398218';
+
+select distance_to_mc($tc_lng,$tc_lat);
+
+-- Q: How far is the real Tivoli Center of Denver from the fictional Melanie's Cafe?
+-- A: ~3.49 Kilometers
+
+//  Create a List of Competing Juice Bars in the Area
+
+select * 
+from OPENSTREETMAP_DENVER.DENVER.V_OSM_DEN_AMENITY_SUSTENANCE
+where 
+    ((amenity in ('fast_food','cafe','restaurant','juice_bar'))
+    and 
+    (name ilike '%jamba%' or name ilike '%juice%'
+     or name ilike '%superfruit%'))
+ or 
+    (cuisine like '%smoothie%' or cuisine like '%juice%');
+
+// Convert the List into a View
+
+create view COMPETITION 
+as select * 
+from OPENSTREETMAP_DENVER.DENVER.V_OSM_DEN_AMENITY_SUSTENANCE
+where 
+    ((amenity in ('fast_food','cafe','restaurant','juice_bar'))
+    and 
+    (name ilike '%jamba%' or name ilike '%juice%'
+     or name ilike '%superfruit%'))
+ or 
+    (cuisine like '%smoothie%' or cuisine like '%juice%');
+
+// Which Competitor is Closest to Melanie's?
+
+SELECT
+ name
+ ,cuisine
+ , ST_DISTANCE(
+    st_makepoint('-104.97300245114094','39.76471253574085')
+    , coordinates
+  ) AS distance_to_melanies
+ ,*
+FROM  competition
+ORDER by distance_to_melanies;
+
+
+// Changing the Function to Accept a GEOGRAPHY Argument (#OVERLOADING)
+
+CREATE OR REPLACE FUNCTION distance_to_mc(lng_and_lat GEOGRAPHY)
+  RETURNS FLOAT
+  AS
+  $$
+   st_distance(
+        st_makepoint('-104.97300245114094','39.76471253574085')
+        ,lng_and_lat
+        )
+  $$
+  ;
+
+
+//  Now We Can Use it In Our Sonra Select
+
+SELECT
+ name
+ ,cuisine
+ ,distance_to_mc(coordinates) AS distance_to_melanies
+ ,*
+FROM  competition
+ORDER by distance_to_melanies;
+
+
+//  Different Options, Same Outcome!
+
+-- Tattered Cover Bookstore McGregor Square
+set tcb_lng='-104.9956203'; 
+set tcb_lat='39.754874';
+
+--this will run the first version of the UDF
+select distance_to_mc($tcb_lng,$tcb_lat);
+
+--this will run the second version of the UDF, bc it converts the coords 
+--to a geography object before passing them into the function
+select distance_to_mc(st_makepoint($tcb_lng,$tcb_lat));
+
+--this will run the second version bc the Sonra Coordinates column
+-- contains geography objects already
+select name
+, distance_to_mc(coordinates) as distance_to_melanies 
+, ST_ASWKT(coordinates)
+from OPENSTREETMAP_DENVER.DENVER.V_OSM_DEN_SHOP
+where shop='books' 
+and name like '%Tattered Cover%'
+and addr_street like '%Wazee%';
+
+-- NOTE: When speaking about a FUNCTION plus its ARGUMENTS we can refer to it as the FUNCTION SIGNATURE.
+
+// Create a View of Bike Shops in the Denver Data
+
+create schema mels_smoothie_challenge_db.locations;
+create or replace view mels_smoothie_challenge_db.locations.DENVER_BIKE_SHOPS as
+select 
+    name
+    ,ST_DISTANCE(st_makepoint('-104.97300245114094','39.76471253574085'), coordinates) AS distance_to_melanies
+    ,coordinates
+from OPENSTREETMAP_DENVER.DENVER.V_OSM_DEN_SHOP_OUTDOORS_AND_SPORT_VEHICLES
+where shop = 'bicycle'
+order by distance_to_melanies;
+
+select * from mels_smoothie_challenge_db.locations.DENVER_BIKE_SHOPS ;
+
+-- Q: Which Bike Shop is 2,490 meters away from Melanie's Cafe?
+-- A: CycleBar LoHi
+
+--************
+-- section:9
+--************
+
+// Materialized Views, External Tables,  and Iceberg Tables
+
+-- Q: What are Materialized Views, External Tables and Iceberg Tables generally used for?
+-- A: To provide high performance access to data that has not been loaded.
+
+-- #DEF: MATERIALIZED VIEWS
+-- A Materialized View is like a view that is frozen in place (more or less looks and acts like a table).
+-- NOTE: you can't put a materialized view directly on top of staged data. 
+
+-- #DEF: External Tables
+-- An External Table is a table put over the top of non-loaded data
+-- Q: Which of these can be placed directly on top of a stage?
+-- 1. An External Table
+-- 2. A "regular" View
+
+
+// Let's TRY TO CREATE a Super-Simple, Stripped Down External Table
+
+create or replace external table T_CHERRY_CREEK_TRAIL(
+    my_filename varchar(100) as (metadata$filename::varchar(100))
+)
+location= @external_aws_dlkw -- @TRAILS_PARQUET
+auto_refresh = true
+file_format = (type='parquet');
+
+
+select * from t_cherry_creek_trail;
+
+-- NOTE: you CAN put a Materialized View over staged data, as long as you put an External Table in between them
+
+//  Create a Materialized View Version of Our New External Table
+
+create secure materialized view MELS_SMOOTHIE_CHALLENGE_DB.TRAILS.SMV_CHERRY_CREEK_TRAIL(
+	POINT_ID,
+	TRAIL_NAME,
+	LNG,
+	LAT,
+	COORD_PAIR,
+    DISTANCE_TO_MELANIES
+) as select 
+    value:sequence_1 as point_id
+    ,value:trail_name::varchar as trail_name
+    ,value:latitude::number(11,8) as lng
+    ,value:longitude::number(11,8) as lat
+    ,lng|| ' '||lat as coord_pair
+    ,distance_to_mc(lng, lat) as distance_to_melanies
+from t_cherry_creek_trail;
+
+-- validation
+select * from smv_cherry_creek_trail;
+
+
+-- Q: Which of the following statements are true?
+-- 1. You can create a Materialized View on top of a Snowflake External Stage as long as you include an External Table layer in-between.
+-- 2. Iceberg tables are open source and are developed, maintained and licensed by Apache.
+-- 3. Iceberg tables in Snowflake will make it possible to edit Parquet files using INSERT and UPDATE statements.
+
+ -- Create an External Volume
+ -- ROLE: ACCOUNT_ADMIN
+
+ create or replace external volume iceberg_external_volume
+ storage_locations = (
+    (
+        NAME= 'iceberg-s3-us-west-2'
+        STORAGE_PROVIDER= 'S3'
+        STORAGE_BASE_URL= 's3://uni-dlkw-iceberg'
+        STORAGE_AWS_ROLE_ARN= 'arn:aws:iam::321463406630:role/dlkw_iceberg_role'
+        STORAGE_AWS_EXTERNAL_ID= 'dlkw_iceberg_id'
+    )
+ );
+
+
+-- Check Your Volume (And Get the User Info for Us)
+desc external volume iceberg_external_volume;
+
+
+-- Create an Iceberg Database
+create database my_iceberg_db
+    catalog = 'SNOWFLAKE'
+    external_volume = 'iceberg_external_volume';
+
+-- Create a Table 
+
+set table_name = 'CCT_'||current_account();
+-- select $table_name;
+
+create iceberg table identifier($table_name) (
+    point_id number(10,0)
+    , trail_name string
+    , coord_pair string
+    , distance_to_melanies decimal(20,10)
+    , user_name string
+)
+  BASE_LOCATION = $table_name
+  AS SELECT top 100
+    point_id
+    , trail_name
+    , coord_pair
+    , distance_to_melanies
+    , current_user()
+  FROM MELS_SMOOTHIE_CHALLENGE_DB.TRAILS.SMV_CHERRY_CREEK_TRAIL;
+
+-- To run a select on your new table try this: 
+select * from identifier($table_name);
+
+update identifier($table_name)
+set user_name = 'I am amazing!!'
+where point_id = 1;
+
+-- Q: Based on this workshop thus far, check all of the true statements below.
+-- 1. Zena did not load her image data, she just accessed it using Snowflake.
+-- 2. Zena used the directory table feature of a stage to make her images behave as if they were loaded.
+-- 3. Mel did not load his data, he accessed it from an S3 bucket using Snowflake.
+-- 4. Mel was able to combine GeoJSON and Parquet data seamlessly without loading or changing the data.
+

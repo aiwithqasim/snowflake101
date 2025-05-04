@@ -1,0 +1,354 @@
+// NOTE: Some trial accounts will have the SNOWFLAKE_SANDBOX_DB and some will not. 
+// You do not need it for this workshop so if you don't see it, don't worry about it. 
+
+alter database THAT_REALLY_COOL_SAMPLE_STUFF
+rename to snowflake_sample_data;
+
+-- Do drop/add SNOWFLAKE_SAMPLE_DATA exercise with ACCOUNT_ADMIN
+-- You'll not be able to see the SNOWFLAKE_SAMPLE_DATA with SYSADMIN
+-- you have to provide "imported priviliages" to SYSADMIN either via 
+-- 1. UI 
+-- 2. Command
+
+grant imported privileges
+on database SNOWFLAKE_SAMPLE_DATA
+to role SYSADMIN;
+
+--Check the range of values in the Market Segment Column
+select distinct c_mktsegment
+from snowflake_sample_data.tpch_sf1.customer;
+
+--Find out which Market Segments have the most customers
+select c_mktsegment, count(*)
+from snowflake_sample_data.tpch_sf1.customer
+group by c_mktsegment
+order by count(*);
+
+-- Nations Table
+select n_nationkey, n_name, n_regionkey
+from snowflake_sample_data.tpch_sf1.nation;
+
+-- Regions Table
+select r_regionkey, r_name
+from snowflake_sample_data.tpch_sf1.region;
+
+-- Join the Tables and Sort
+select r_name as region, n_name as nation
+from snowflake_sample_data.tpch_sf1.nation
+join snowflake_sample_data.tpch_sf1.region
+on n_regionkey = r_regionkey
+order by r_name, n_name asc;
+
+--Group and Count Rows Per Region
+select r_name as region, count(n_name) as num_countries
+from snowflake_sample_data.tpch_sf1.nation
+join snowflake_sample_data.tpch_sf1.region
+on n_regionkey = r_regionkey
+group by r_name;
+
+// The real value of consuming shared data is:
+// a. Someone else will maintain it over time and keep it fresh
+// b. Someone else will pay to store it
+// c. You will only pay to query it
+
+
+-- Set Up a New Database Called INTL_DB
+use role SYSADMIN;
+create database INTL_DB;
+use schema INTL_DB.PUBLIC;
+
+--  Create a Warehouse for Loading INTL_DB
+create warehouse INTL_WH
+with
+warehouse_size = 'XSMALL'
+warehouse_type = 'STANDARD'
+auto_suspend = 600  -- 600/60 = 10minutes
+auto_resume = TRUE;
+
+use warehouse INTL_WH;
+
+-- Create Table INT_STDS_ORG_3166
+create or replace table intl_db.public.INT_STDS_ORG_3166 
+(iso_country_name varchar(100), 
+ country_name_official varchar(200), 
+ sovreignty varchar(40), 
+ alpha_code_2digit varchar(2), 
+ alpha_code_3digit varchar(3), 
+ numeric_country_code integer,
+ iso_subdivision varchar(15), 
+ internet_domain_code varchar(10)
+);
+
+--  Create a File Format to Load the Table
+create file format util_db.public.PIPE_DBLQUOTE_HEADER_CR
+type = 'CSV' -- use CSV for any flat file
+compression = 'AUTO'
+field_delimiter = '|' -- pipe or vertical bar
+record_delimiter = '\r' -- carriage return
+skip_header = 1 -- 1 header row
+field_optionally_enclosed_by = '\042' -- double quotes
+trim_space = FALSE;
+
+-- Load the ISO Table Using Your File Format
+-- Data files for this course are available from an s3 bucket named "uni-cmcw".
+use util_db;
+show stages in account; 
+
+create stage util_db.public.aws_s3_bucket url = 's3://uni-cmcw';
+
+list @util_db.public.aws_s3_bucket;
+
+copy into int_stds_org_3166
+from @util_db.public.aws_s3_bucket
+files = ('ISO_Countries_UTF8_pipe.csv')
+file_format = (format_name= util_db.public.PIPE_DBLQUOTE_HEADER_CR);
+
+-- validation
+select count(*) as found, '249' as expected
+from INTL_DB.PUBLIC.INT_STDS_ORG_3166;
+
+// IF above validation don;t have equal counts 
+// a. check db and its nameing
+-- ALTER DATABASE INTRL_DB
+-- RENAME TO INTL_DB;
+
+// b. check table in that db and its nameig
+-- ALTER TABLE INTRL_DB.PUBLIC.INT_3166
+-- RENAME TO INTL_DB.PUBLIC.INT_STDS_ORG_3166;
+
+// c. check count and file in that table
+-- TRUNCATE TABLE INTL_DB.PUBLIC.INT_STDS_ORG_3166;
+
+select count(*) as OBJECTS_FOUND
+from INTL_DB.information_schema.tables
+where table_schema = 'PUBLIC'
+and table_name = 'INT_STDS_ORG_3166';
+
+select row_count
+from INTL_DB.information_schema.tables
+where table_schema = 'PUBLIC'
+and table_name = 'INT_STDS_ORG_3166';
+
+-- Join Local Data with Shared Data
+
+select 
+    iso_country_name
+    , country_name_official
+    , alpha_code_2digit
+    , r_name as region
+from intl_db.public.int_stds_org_3166 i
+left join SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.NATION n
+on upper(i.iso_country_name) = n.n_name
+left join SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.REGION r
+on n.n_regionkey = r.r_regionkey;
+
+create view intl_db.public.NATIONS_SAMPLE_PLUS_ISO 
+( iso_country_name
+  ,country_name_official
+  ,alpha_code_2digit
+  ,region) AS
+  select 
+    iso_country_name
+    , country_name_official
+    , alpha_code_2digit
+    , r_name as region
+    from intl_db.public.int_stds_org_3166 i
+    left join SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.NATION n
+    on upper(i.iso_country_name) = n.n_name
+    left join SNOWFLAKE_SAMPLE_DATA.TPCH_SF1.REGION r
+    on n.n_regionkey = r.r_regionkey
+;
+
+select *
+from intl_db.public.NATIONS_SAMPLE_PLUS_ISO;
+
+--  Create Table Currencies
+create table intl_db.public.CURRENCIES 
+(
+  currency_ID integer, 
+  currency_char_code varchar(3), 
+  currency_symbol varchar(4), 
+  currency_digital_code varchar(3), 
+  currency_digital_name varchar(30)
+)
+comment = 'Information about currencies including character codes, symbols, digital codes, etc.';
+
+--  Create Table Country to Currency
+create table intl_db.public.COUNTRY_CODE_TO_CURRENCY_CODE 
+  (
+    country_char_code varchar(3), 
+    country_numeric_code integer, 
+    country_name varchar(100), 
+    currency_name varchar(100), 
+    currency_char_code varchar(3), 
+    currency_numeric_code integer
+) 
+comment = 'Mapping table currencies to countries';
+
+-- Create a File Format to Process files with Commas, Linefeeds and a Header Row
+create file format util_db.public.CSV_COMMA_LF_HEADER
+  type = 'CSV' 
+  field_delimiter = ',' 
+  record_delimiter = '\n' -- the n represents a Line Feed character
+  skip_header = 1 
+;
+
+-- loading data into table
+list @util_db.public.AWS_S3_BUCKET/;
+
+-- s3://uni-cmcw/currencies.csv
+select $1, $2, $3, $4, $5, $6
+from  @util_db.public.AWS_S3_BUCKET/currencies.csv
+(file_format => util_db.public.CSV_COMMA_LF_HEADER);
+
+copy into currencies
+from @util_db.public.aws_s3_bucket
+files = ('currencies.csv')
+file_format = (format_name = util_db.public.CSV_COMMA_LF_HEADER);
+
+-- s3://uni-cmcw/country_code_to_currency_code.csv
+select $1, $2, $3, $4, $5, $6
+from  @util_db.public.AWS_S3_BUCKET/country_code_to_currency_code.csv
+(file_format => util_db.public.CSV_COMMA_LF_HEADER);
+
+copy into country_code_to_currency_code
+from @util_db.public.aws_s3_bucket
+files = ('country_code_to_currency_code.csv')
+file_format = (format_name = util_db.public.CSV_COMMA_LF_HEADER);
+
+-- Create a View that Will Return The Result Set Shown
+-- DONOT USE JOINS
+
+create or replace view simple_currency
+(
+    cty_code
+    ,cur_code
+
+) as
+select
+    country_char_code
+    ,currency_char_code
+from country_code_to_currency_code;
+
+-- valdiation
+select * from simple_currency; -- 265
+
+
+-- ===================================
+-- Data Sharing with Other Accounts
+-- ===================================
+
+-- Create a GCP Snowflake Account for ACME
+-- 1. Select ORGADMIN role
+-- 2. Admin >> Accounts >> any region
+-- 3. Save credentials
+
+-- Martín Sets Up World Data Emporium as a Listing Provider
+
+-- This will be a cost that WDE/Osiris covers. 
+-- If Osiris doesn't want to cover that cost, he could insist that Lottie's team get a Snowflake account on the same cloud and in the same region as his primary account. This may become part of their negotiations.
+
+-- $GDS database  will appear on this WDE account.
+
+// What is a Listing?
+-- A listing is a vehicle for sharing.
+
+// Add a Data Dictionary to the COUNTRY_CODE_TO_CURRENCY_CODE Table. 
+-- Column	                  Description
+-- COUNTRY_CHAR_CODE	      Three-letter country code, like USA for the United States, or HKG for Hong Kong.
+-- COUNTRY_NAME	              Full name of country, like LAO PEOPLE’S DEMOCRATIC REPUBLIC (THE).
+-- COUNTRY_NUMERIC_CODE	      A number given to each country. Not unique.
+-- CURRENCY_CHAR_CODE	      Three-letter currency code, like JPY for the Japanese Yen, or EUR for the Euro. 
+-- CURRENCY_NAME	          Full name of the currency, like Mozambique Metical or Norwegian Krone.
+-- CURRENCY_NUMERIC_CODE	  A number given to each currency. Not unique.
+
+
+// Add A Sample Query
+-- Copy/Paste for the Sample Query:
+
+-- Field	       Description
+-- Title	       Show the Simple Country Code to Currency Code Mapping 
+-- Description	   Based on the billing address of a customer, look up which currency applies to the order. 
+-- Query	       select * from public.country_code_to_currency_code;
+
+// Convert "Regular" Views to Secure Views
+
+alter view intl_db.public.NATIONS_SAMPLE_PLUS_ISO
+set secure; 
+
+alter view intl_db.public.SIMPLE_CURRENCY
+set secure; 
+
+-- Snowflake cost is broken out into 3 categories. (https://docs.snowflake.com/en/user-guide/cost-understanding-overall)
+-- 1. Compute
+-- 2. Storage
+-- 3. Outgoing Data Transfer [ incming is FREE]
+
+-- PRICING: https://www.snowflake.com/en/pricing-options/
+-- FORMULA: (Cost of Compute Formula) / (Credit Cost * Credit per Hour * Hours)
+
+-- example 1 (If credits cost $3/hr, how much will it cost to run a Medium warehouse for 1 hour?)
+-- 1. 3$ per credit (https://www.snowflake.com/en/pricing-options/)
+-- 2. 4 credit/hours for MEDIUM (https://docs.snowflake.com/en/user-guide/warehouses-overview)
+-- ANSWER: 3$/hr * 4credit/hr ==> 12$/hr
+
+-- example 2 (If credits cost $3/hr, how much will it cost to run a 3XL warehouse for 4 hours?)
+-- 1. 3$/hr ==> Credit COst 
+-- 2. 64/hr ==> Credit hour
+-- 4 hours
+-- ANSWER: 3$/hr * 64/hr * 4 ==> 768$/4hr
+
+
+
+-- STORAGE = 0 ~ 50$ FUTURE
+-- Credit Cost 3$/hr
+-- XS WH 1/hr
+-- 1 hour
+
+-- BADGE -2 CASE STUDY
+-- Storage $0 per month. 
+-- Compute $.99 per month. 
+-- Data Transfer $0 per month.
+
+//  Role-Based Access for Cost Control
+
+-- In the real world, most people will have roles that are: 
+
+-- a. Not able to create a Warehouse.
+-- b. Not able to change the size of a Warehouse.
+-- c. Not able to modify Resource Monitors.
+-- d. Not be able to view, create, or modify Budgets. 
+-- MCQS - set up Resource Monitors to protect themselves from unexpected costs.
+
+--=================================
+// Resource Monitor Challenge Lab!
+--=================================
+
+-- Set up a similar resource monitor in the ACME account.
+-- Allow 5 credits of usage per WEEK at the Account level.
+-- Name your Resource Monitor Weekly_5.
+-- Use the 95/85/75 action settings we used in the other monitor.
+
+-- WDE  ==> 3 credit /daily
+-- ACME ==> 5 credit / week
+
+-- if 3$/credit then total credit will be
+
+-- WDE ==> 3credit * 3$ ==> 9$ per day in WDE
+-- ACME ==> 5credit * 3$ ==> 15$ per week in ACME
+
+// If credits for both of your accounts cost $3 per credit, what is the maximum you can now "spend" in a single day, if you do not change or delete the resource monitors? (Assume you use 100% of the quota you set)
+
+-- 9$ + 15$ = 24$ /day combined for both account
+
+// Continuing the same scenario as in the question above, if you maxed out the credits (above) for both of your accounts on a Monday, and it is now Tuesday, what is the maximum you can now "spend" on the current day, if you do not change or delete the resource monitors? (Assume you use 100% of the quota you set)
+
+-- ACME account /per limit is completed
+-- WDE 3credit * 3$ => 9$ for Turesday
+
+--===========
+--📓 Budgets! 
+--===========
+
+
+
